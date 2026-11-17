@@ -1,46 +1,48 @@
-// The saved game: cash, respect, story progress and where Juno stood, kept
-// in localStorage between visits. One slot, written at the safehouse, after
-// every mission, and whenever the game is paused.
+// save.js — the saved game. One slot in localStorage holding Juno's cash,
+// respect, story progress and last position. Written when she rests at the
+// loft, after every mission, and from the pause menu; read at boot for the
+// title screen's Continue button. Every access is guarded: a browser that
+// refuses storage simply plays without saving.
 
 import { SAVE_KEY } from './config.js';
 
-/** The saved game object, or null when there is none (or it is unreadable). */
+/** The parsed save, or null when there is none worth trusting. */
 export function loadSave() {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (typeof data !== 'object' || data === null || typeof data.cash !== 'number') return null;
-    return data;
+    const usable = typeof data === 'object' && data !== null && typeof data.cash === 'number';
+    return usable ? data : null;
   } catch {
     return null;
   }
 }
 
-/** Write the saved game. */
+/** Persist a save object. Failures (private mode, quota) are silent. */
 export function storeSave(data) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   } catch {
-    /* private mode and full disks lose saves quietly */
+    /* the game goes on unsaved */
   }
 }
 
-/** Forget the saved game (a new game overwrites it anyway). */
+/** Remove the save entirely. */
 export function clearSave() {
   try {
     localStorage.removeItem(SAVE_KEY);
   } catch {
-    /* nothing to forget */
+    /* nothing to remove */
   }
 }
 
-/** Whether a saved game exists for the title screen's Continue button. */
+/** True when a readable save exists. */
 export function hasSave() {
   return loadSave() !== null;
 }
 
-/** Snapshot the parts of the state worth keeping. */
+/** The slice of the live state worth keeping between visits. */
 export function snapshotOf(S) {
   return {
     cash: S.player.cash,

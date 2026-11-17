@@ -1,19 +1,22 @@
-// A tiny static server for game/ (Node 22, standard library only), so an entry can be played
-// locally without a build step: `node serve.ts` serves game/ on http://localhost:8080.
-// It sends the MIME types a browser game needs, refuses any path outside game/, and otherwise
-// does nothing clever: this is a development convenience, not a web server for the internet.
+// serve.ts — a pocket static server for the game/ folder, Node 22 standard
+// library only. `node serve.ts` (or `--port 9000`) puts the game on
+// http://localhost:8080 so it can be played locally with no build step.
+// It knows the content types a browser game asks for, answers 404 for what
+// is not there, and refuses to serve anything outside game/. It is a
+// development convenience; it is not hardened for the open internet.
 import { createReadStream, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(fileURLToPath(new URL('./game', import.meta.url)));
-const args = process.argv.slice(2);
-const portIndex = args.indexOf('--port');
-const requested = portIndex === -1 ? 8080 : Number(args[portIndex + 1]);
-const port = Number.isInteger(requested) && requested > 0 && requested < 65536 ? requested : 8080;
+const gameRoot = resolve(fileURLToPath(new URL('./game', import.meta.url)));
 
-const MIME: Record<string, string> = {
+const argv = process.argv.slice(2);
+const portFlag = argv.indexOf('--port');
+const asked = portFlag === -1 ? 8080 : Number(argv[portFlag + 1]);
+const port = Number.isInteger(asked) && asked > 0 && asked < 65536 ? asked : 8080;
+
+const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.mjs': 'text/javascript; charset=utf-8',
@@ -26,6 +29,7 @@ const MIME: Record<string, string> = {
   '.webp': 'image/webp',
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
   '.woff2': 'font/woff2',
   '.glb': 'model/gltf-binary',
   '.gltf': 'model/gltf+json',
@@ -37,36 +41,38 @@ const MIME: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
 };
 
-createServer((request, response) => {
-  const url = new URL(request.url ?? '/', 'http://localhost');
+const server = createServer((req, res) => {
   let pathname: string;
   try {
-    pathname = decodeURIComponent(url.pathname);
+    pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
   } catch {
-    response.writeHead(400).end('bad request');
+    res.writeHead(400).end('bad request');
     return;
   }
   if (pathname.endsWith('/')) pathname += 'index.html';
-  const file = resolve(join(root, normalize(pathname)));
-  if (file !== root && !file.startsWith(root + sep)) {
-    response.writeHead(403).end('forbidden');
+  const filePath = resolve(join(gameRoot, normalize(pathname)));
+  // Stay inside game/: anything that climbs out is forbidden, not served.
+  if (filePath !== gameRoot && !filePath.startsWith(gameRoot + sep)) {
+    res.writeHead(403).end('forbidden');
     return;
   }
   let size: number;
   try {
-    const stats = statSync(file);
-    if (!stats.isFile()) throw new Error('not a file');
-    size = stats.size;
+    const info = statSync(filePath);
+    if (!info.isFile()) throw new Error('directory');
+    size = info.size;
   } catch {
-    response.writeHead(404).end('not found');
+    res.writeHead(404).end('not found');
     return;
   }
-  response.writeHead(200, {
-    'content-type': MIME[extname(file).toLowerCase()] ?? 'application/octet-stream',
+  res.writeHead(200, {
+    'content-type': CONTENT_TYPES[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
     'content-length': size,
     'cache-control': 'no-store',
   });
-  createReadStream(file).pipe(response);
-}).listen(port, '127.0.0.1', () => {
-  console.log(`game/ is on http://localhost:${port}`);
+  createReadStream(filePath).pipe(res);
+});
+
+server.listen(port, '127.0.0.1', () => {
+  console.log(`Marisol Heatwave is serving game/ at http://localhost:${port}`);
 });

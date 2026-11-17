@@ -5,14 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Marisol Heatwave — an open-world crime game</title>
 <style>
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #14232e; }
-  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
-  /* Read aloud, never shown: the status line screen readers announce. */
-  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* The game is one full-window canvas; the page itself never scrolls. */
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #101d26; }
+  #game { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  /* Visually hidden but announced: a live status line for screen readers. */
+  #status { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; white-space: nowrap; }
 </style>
 </head>
 <body>
-<canvas id="game" aria-label="Marisol Heatwave: explore the city of Marisol Bay on foot and by car, run missions, and outrun the MBPD. WASD to move and drive, mouse to aim, F to enter cars."></canvas>
+<canvas id="game" aria-label="Marisol Heatwave. Roam Marisol Bay on foot and by car, take work from Vera Solano, and stay ahead of the MBPD. Move and drive with WASD, aim with the mouse, press F to get into cars."></canvas>
 <p id="status" role="status" aria-live="polite">Marisol Heatwave is loading.</p>
 <script type="module" src="./src/main.js"></script>
 </body>

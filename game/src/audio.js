@@ -1,237 +1,264 @@
-// Procedural sound: every effect and the music loop are synthesised with
-// WebAudio — no audio files. The engine and siren are continuous voices whose
-// pitch and volume the game drives each frame; the rest are one-shot blips.
+// audio.js — all of Marisol Heatwave's sound, synthesised with WebAudio.
+// There are no audio files: one-shot effects are little envelopes of tone
+// and filtered noise, the engine and the police siren are standing voices
+// whose pitch and volume the game drives every frame, and the music is a
+// slow synthwave loop scheduled bar by bar. Nothing sounds until the first
+// user gesture creates the context, as browsers require.
 
-let ctx = null;
-let master = null;
-let muted = false;
-let engineNodes = null;
-let sirenNodes = null;
+let actx = null;
+let bus = null;
+let isMutedNow = false;
+let engineVoice = null;
+let sirenVoice = null;
 let musicTimer = null;
-let musicStep = 0;
+let musicBar = 0;
 
-/** Create the context on the first user gesture; safe to call often. */
+/** Create (or resume) the audio context. Safe to call on every gesture. */
 export function initAudio() {
-  if (ctx) {
-    if (ctx.state === 'suspended') ctx.resume();
+  if (actx) {
+    if (actx.state === 'suspended') actx.resume();
     return;
   }
   try {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain();
-    master.gain.value = muted ? 0 : 0.5;
-    master.connect(ctx.destination);
+    const AC = window.AudioContext || window.webkitAudioContext;
+    actx = new AC();
+    bus = actx.createGain();
+    bus.gain.value = isMutedNow ? 0 : 0.5;
+    bus.connect(actx.destination);
   } catch {
-    ctx = null;
+    actx = null;
   }
 }
 
-/** Flip the mute and return the new state. */
+/** Flip the mute switch; returns the new muted state. */
 export function toggleMute() {
-  muted = !muted;
-  if (master) master.gain.value = muted ? 0 : 0.5;
-  return muted;
+  isMutedNow = !isMutedNow;
+  if (bus) bus.gain.value = isMutedNow ? 0 : 0.5;
+  return isMutedNow;
 }
 
-/** Whether sound is currently muted. */
+/** Whether the game is currently muted. */
 export function isMuted() {
-  return muted;
+  return isMutedNow;
 }
 
-function env(gain, t0, peak, decay) {
-  gain.gain.setValueAtTime(0.0001, t0);
-  gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.008);
-  gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
+/** A quick attack-and-decay envelope on a gain node. */
+function envelope(gain, start, peak, seconds) {
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(peak, start + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + seconds);
 }
 
-function tone(freq, dur, type = 'sine', vol = 0.2, slideTo = null, delay = 0) {
-  if (!ctx) return;
-  const t0 = ctx.currentTime + delay;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
+/** One oscillator blip, optionally sliding to a second frequency. */
+function tone(freq, seconds, type = 'sine', volume = 0.2, slideTo = null, delay = 0) {
+  if (!actx) return;
+  const start = actx.currentTime + delay;
+  const osc = actx.createOscillator();
+  const gain = actx.createGain();
   osc.type = type;
-  osc.frequency.setValueAtTime(freq, t0);
-  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
-  env(gain, t0, vol, dur);
-  osc.connect(gain).connect(master);
-  osc.start(t0);
-  osc.stop(t0 + dur + 0.05);
+  osc.frequency.setValueAtTime(freq, start);
+  if (slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, start + seconds);
+  envelope(gain, start, volume, seconds);
+  osc.connect(gain);
+  gain.connect(bus);
+  osc.start(start);
+  osc.stop(start + seconds + 0.05);
 }
 
-function noise(dur, vol = 0.3, freq = 1200, q = 0.8, delay = 0) {
-  if (!ctx) return;
-  const t0 = ctx.currentTime + delay;
-  const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
-  const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+/** One burst of band-passed noise: shots, crashes, skids, explosions. */
+function noise(seconds, volume = 0.3, centre = 1200, q = 0.8, delay = 0) {
+  if (!actx) return;
+  const start = actx.currentTime + delay;
+  const length = Math.max(1, Math.floor(actx.sampleRate * seconds));
+  const buffer = actx.createBuffer(1, length, actx.sampleRate);
   const data = buffer.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-  const src = ctx.createBufferSource();
-  src.buffer = buffer;
-  const filter = ctx.createBiquadFilter();
+  for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
+  const source = actx.createBufferSource();
+  source.buffer = buffer;
+  const filter = actx.createBiquadFilter();
   filter.type = 'bandpass';
-  filter.frequency.value = freq;
+  filter.frequency.value = centre;
   filter.Q.value = q;
-  const gain = ctx.createGain();
-  env(gain, t0, vol, dur);
-  src.connect(filter).connect(gain).connect(master);
-  src.start(t0);
+  const gain = actx.createGain();
+  envelope(gain, start, volume, seconds);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(bus);
+  source.start(start);
 }
 
-/** A pistol shot: a crack of noise over a low thump. */
+/** A pistol shot: a crack over a low thump. */
 export function sfxShot() {
   noise(0.09, 0.5, 2600, 0.6);
   tone(140, 0.08, 'square', 0.25, 60);
 }
 
-/** A bullet striking metal or flesh. */
+/** A bullet or a body meeting something solid. */
 export function sfxHit() {
   noise(0.05, 0.25, 900, 1.2);
 }
 
-/** A car body crumpling. */
+/** Bent metal, scaled by the strength of the impact. */
 export function sfxCrash(strength = 1) {
   noise(0.22, 0.35 * strength, 300, 0.5);
   tone(80, 0.2, 'triangle', 0.3 * strength, 40);
 }
 
-/** Tyres losing grip. */
+/** Tyres at the edge of grip; `amount` is 0..1. */
 export function sfxSkid(amount) {
-  if (!ctx || amount <= 0.05) return;
+  if (!actx || amount <= 0.05) return;
   noise(0.08, 0.1 * amount, 1800, 2.5);
 }
 
-/** A car door and a seatbelt: entering or stealing a car. */
+/** A car door opening and closing: getting in, or being pulled out. */
 export function sfxDoor() {
   tone(220, 0.06, 'square', 0.12, 140);
   noise(0.05, 0.12, 700, 1, 0.05);
 }
 
-/** Cash register of the soul: a job paid out. */
+/** Money arriving: two bright notes. */
 export function sfxCash() {
   tone(880, 0.09, 'sine', 0.22);
   tone(1318, 0.14, 'sine', 0.22, null, 0.08);
 }
 
-/** A package picked up, a checkpoint crossed. */
+/** A pickup or a checkpoint: a small rising pair. */
 export function sfxPickup() {
   tone(660, 0.07, 'triangle', 0.2);
   tone(990, 0.1, 'triangle', 0.2, null, 0.06);
 }
 
-/** Mission complete: a small major arpeggio. */
+/** Mission passed: a four-note major arpeggio. */
 export function sfxMissionPass() {
-  [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.16, 'triangle', 0.22, null, i * 0.09));
+  const notes = [523, 659, 784, 1046];
+  notes.forEach((freq, i) => tone(freq, 0.16, 'triangle', 0.22, null, i * 0.09));
 }
 
-/** Mission failed: two falling notes. */
+/** Mission failed: two notes falling away. */
 export function sfxMissionFail() {
   tone(392, 0.2, 'triangle', 0.22, 311);
   tone(311, 0.3, 'triangle', 0.22, 233, 0.18);
 }
 
-/** Busted or wasted sting. */
+/** The busted / wasted sting. */
 export function sfxSting() {
   tone(196, 0.5, 'sawtooth', 0.16, 98);
   noise(0.4, 0.12, 200, 0.6);
 }
 
-/** A nearby car horn. */
+/** A traffic horn, close enough to hear. */
 export function sfxHorn() {
   tone(370, 0.18, 'square', 0.08);
   tone(466, 0.18, 'square', 0.06, null, 0.01);
 }
 
-/** An explosion: filtered noise rolling off into a sub thump. */
+/** An explosion: low noise rolling into a sub-bass thump. */
 export function sfxExplosion() {
   noise(0.7, 0.6, 160, 0.4);
   tone(60, 0.6, 'sine', 0.5, 30);
 }
 
-/** Start or stop the player's engine voice; `speed01` pitches it each frame. */
+function stopVoice(voice, nodes) {
+  if (!actx || !voice) return;
+  voice.gain.gain.linearRampToValueAtTime(0.0001, actx.currentTime + 0.15);
+  setTimeout(() => {
+    for (const node of nodes) {
+      try { node.stop(); } catch { /* already silent */ }
+    }
+  }, 250);
+}
+
+/**
+ * The player's engine voice. Call with on=true and a 0..1 speed fraction
+ * every frame while driving; on=false parks it.
+ */
 export function engine(on, speed01 = 0) {
-  if (!ctx) return;
-  if (on && !engineNodes) {
-    const osc = ctx.createOscillator();
-    const sub = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
+  if (!actx) return;
+  if (on && !engineVoice) {
+    const osc = actx.createOscillator();
+    const sub = actx.createOscillator();
+    const filter = actx.createBiquadFilter();
+    const gain = actx.createGain();
     osc.type = 'sawtooth';
     sub.type = 'square';
     filter.type = 'lowpass';
     filter.frequency.value = 500;
-    gain.gain.value = 0.0;
+    gain.gain.value = 0;
     osc.connect(filter);
     sub.connect(filter);
-    filter.connect(gain).connect(master);
+    filter.connect(gain);
+    gain.connect(bus);
     osc.start();
     sub.start();
-    engineNodes = { osc, sub, gain, filter };
+    engineVoice = { osc, sub, filter, gain };
   }
-  if (!on && engineNodes) {
-    const nodes = engineNodes;
-    engineNodes = null;
-    nodes.gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
-    setTimeout(() => {
-      try {
-        nodes.osc.stop();
-        nodes.sub.stop();
-      } catch { /* already stopped */ }
-    }, 250);
+  if (!on) {
+    if (engineVoice) {
+      const voice = engineVoice;
+      engineVoice = null;
+      stopVoice(voice, [voice.osc, voice.sub]);
+    }
     return;
   }
-  if (engineNodes) {
-    const f = 55 + speed01 * 165;
-    engineNodes.osc.frequency.value = f;
-    engineNodes.sub.frequency.value = f / 2;
-    engineNodes.filter.frequency.value = 400 + speed01 * 1400;
-    engineNodes.gain.gain.value = 0.05 + speed01 * 0.075;
+  if (engineVoice) {
+    const freq = 55 + speed01 * 165;
+    engineVoice.osc.frequency.value = freq;
+    engineVoice.sub.frequency.value = freq / 2;
+    engineVoice.filter.frequency.value = 400 + speed01 * 1400;
+    engineVoice.gain.gain.value = 0.05 + speed01 * 0.075;
   }
 }
 
-/** Drive the police siren voice: 0 silent, up to 1 loud. */
+/** The police siren voice: `level` is 0 (silent) to 1 (on top of you). */
 export function siren(level) {
-  if (!ctx) return;
-  if (level > 0.02 && !sirenNodes) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
+  if (!actx) return;
+  if (level > 0.02 && !sirenVoice) {
+    const osc = actx.createOscillator();
+    const lfo = actx.createOscillator();
+    const lfoDepth = actx.createGain();
+    const gain = actx.createGain();
     osc.type = 'triangle';
     osc.frequency.value = 950;
     lfo.frequency.value = 0.65;
-    lfoGain.gain.value = 260;
-    lfo.connect(lfoGain).connect(osc.frequency);
+    lfoDepth.gain.value = 260;
+    lfo.connect(lfoDepth);
+    lfoDepth.connect(osc.frequency);
     gain.gain.value = 0;
-    osc.connect(gain).connect(master);
+    osc.connect(gain);
+    gain.connect(bus);
     osc.start();
     lfo.start();
-    sirenNodes = { osc, gain, lfo };
+    sirenVoice = { osc, lfo, gain };
   }
-  if (sirenNodes) {
-    sirenNodes.gain.gain.value = level * 0.055;
-    if (level <= 0.02) {
-      const nodes = sirenNodes;
-      sirenNodes = null;
-      setTimeout(() => {
-        try {
-          nodes.osc.stop();
-          nodes.lfo.stop();
-        } catch { /* already stopped */ }
-      }, 120);
-    }
+  if (!sirenVoice) return;
+  sirenVoice.gain.gain.value = level * 0.055;
+  if (level <= 0.02) {
+    const voice = sirenVoice;
+    sirenVoice = null;
+    setTimeout(() => {
+      try { voice.osc.stop(); } catch { /* already silent */ }
+      try { voice.lfo.stop(); } catch { /* already silent */ }
+    }, 120);
   }
 }
 
-/** The Marisol loop: a slow synthwave bass over warm pads, scheduled ahead. */
+/** The Marisol loop: a slow synthwave bass line under warm pads. */
 export function startMusic() {
-  if (!ctx || musicTimer) return;
-  const bass = [110, 110, 130.8, 98]; // A2 A2 C3 G2
-  const pads = [[220, 261.6, 329.6], [174.6, 220, 261.6], [196, 246.9, 293.7], [164.8, 196, 246.9]];
+  if (!actx || musicTimer) return;
+  const bassLine = [110, 110, 130.8, 98]; // A2, A2, C3, G2
+  const padChords = [
+    [220, 261.6, 329.6],
+    [174.6, 220, 261.6],
+    [196, 246.9, 293.7],
+    [164.8, 196, 246.9],
+  ];
   musicTimer = setInterval(() => {
-    if (!ctx || muted) return;
-    const bar = musicStep % 4;
-    for (let i = 0; i < 4; i++) tone(bass[bar], 0.22, 'triangle', 0.16, null, i * 0.24);
-    pads[bar].forEach((f) => tone(f, 0.95, 'sine', 0.045));
-    musicStep += 1;
+    if (!actx || isMutedNow) return;
+    const bar = musicBar % 4;
+    for (let beat = 0; beat < 4; beat++) {
+      tone(bassLine[bar], 0.22, 'triangle', 0.16, null, beat * 0.24);
+    }
+    for (const freq of padChords[bar]) tone(freq, 0.95, 'sine', 0.045);
+    musicBar += 1;
   }, 960);
 }

@@ -1,24 +1,32 @@
-// Marisol Heatwave — shared constants: the world, the vehicles, the law.
-// Everything in this file is data the other modules read; nothing here runs.
+// config.js — the numbers Marisol Heatwave is tuned by: the size of the
+// world, the road grid, the price of crime, the strength of the law, and
+// the car catalogue. Pure data; every other module reads from here and
+// nothing in this file runs.
 
-/** The whole world, in pixels. Marisol Bay runs west (grass) to east (ocean). */
+/** The world in pixels. West is grass and suburbs, east is sand and sea. */
 export const WORLD = { width: 5120, height: 3840 };
 
-/** Road grid: avenues run north-south, streets east-west; centres, width, lane offset. */
+/**
+ * The road grid. Avenues run north–south, streets east–west; `width` is the
+ * full asphalt width, `lane` the offset of a driving lane from a centre
+ * line, and `walk` how far from a centre line the sidewalk strollers walk.
+ */
 export const ROADS = {
   avenues: [320, 880, 1440, 2000, 2560, 3120, 3680, 4240],
   streets: [300, 840, 1380, 1920, 2460, 3000, 3540],
   width: 88,
   lane: 22,
-  walk: 58, // sidewalk line: this far from a road centre a pedestrian strolls
+  walk: 58,
 };
 
-/** East of this x the city gives up to sand, then water. */
+/** The beach starts at BEACH_X; open water at WATER_X. */
 export const BEACH_X = 4560;
 export const WATER_X = 4820;
 
-/** Wanted heat: how many points each star costs, and what each crime is worth. */
+/** Heat points needed to hold each wanted star (index 0..5). */
 export const HEAT_PER_STAR = [0, 1, 26, 52, 84, 122];
+
+/** What a witnessed crime adds to the heat total. */
 export const CRIME = {
   carjack: 26,
   hitPed: 30,
@@ -30,10 +38,14 @@ export const CRIME = {
   missionFelony: 40,
 };
 
-/** How many police cars the law sends at each wanted level. */
+/** Pursuit cars the MBPD fields at each wanted level (index 0..5). */
 export const POLICE_COUNT = [0, 2, 3, 4, 6, 8];
 
-/** The car catalogue: handling, size and the colours each model wears. */
+/**
+ * The car catalogue. len/wid are body pixels; top is top speed in px/s,
+ * accel in px/s^2, grip the steering authority, hp the damage a body takes
+ * before it burns. `colours` are the liveries a model is seen in.
+ */
 export const CAR_TYPES = {
   compact: { label: 'Pico Compact', len: 34, wid: 17, top: 265, accel: 300, grip: 7.5, hp: 70, colours: ['#c94f42', '#4f7ec9', '#57a773', '#d9a441', '#8d99ae'] },
   sedan: { label: 'Meridian Sedan', len: 40, wid: 18, top: 300, accel: 320, grip: 7.0, hp: 90, colours: ['#3d5a80', '#98c1d9', '#606c76', '#7d8597', '#293241'] },
@@ -46,9 +58,9 @@ export const CAR_TYPES = {
   police: { label: 'MBPD Interceptor', len: 42, wid: 19, top: 385, accel: 440, grip: 8.2, hp: 150, colours: ['#f4f6f8'] },
 };
 
-/** Shirt and skin tones pedestrians are drawn from. */
+/** The wardrobe pedestrians are drawn from. */
 export const PED_SHIRTS = ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#f78c6b', '#e0aaff', '#90be6d', '#f9c74f', '#43aa8b', '#577590'];
 export const PED_SKIN = ['#f1c27d', '#e0ac69', '#c68642', '#8d5524', '#ffdbac'];
 
-/** The save key in localStorage. */
+/** Where the saved game lives in localStorage. */
 export const SAVE_KEY = 'marisol-heatwave-save-v1';

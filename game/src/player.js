@@ -1,14 +1,20 @@
-// Juno Marchetti, the player: walking and sprinting on foot, stealing and
-// driving cars, and pistol work with the mouse. Crimes are pushed onto the
-// event queue; the law (police.js) decides what was seen.
+// player.js — Juno Marchetti. Walking and sprinting on foot, mouse-aimed
+// pistol work, and the two ways she changes cars: politely, into a parked
+// one, or by pulling a driver out of theirs. She never talks to the law
+// directly — her crimes go onto the event queue and police.js decides
+// what was witnessed.
 
 import { held, tapped, input } from './input.js';
-import { stepCar } from './vehicles.js';
+import { stepCar, damageCar } from './vehicles.js';
 import { hurtPed } from './pedestrians.js';
-import { damageCar } from './vehicles.js';
 import { collideCircle, surfaceAt } from './city.js';
 
-/** A new player at a spawn point, with her name and empty pockets. */
+const WALK_SPEED = 168;
+const SPRINT_SPEED = 252;
+const PISTOL_RANGE = 430;
+const PISTOL_CADENCE = 0.22;
+
+/** A new Juno at a spawn point: full health, $120, no respect, no car. */
 export function createPlayer(x, y) {
   return {
     name: 'Juno Marchetti',
@@ -22,52 +28,52 @@ export function createPlayer(x, y) {
     inCar: false,
     car: null,
     shootT: 0,
-    hurtT: 0, // time since last damage, drives the small health regen
-    phase: 0,
+    hurtT: 0, // seconds since she last took damage; drives the small regen
+    phase: 0, // walk cycle
     moving: false,
   };
 }
 
-/** The nearest car the player could get into, or null. */
-export function nearestCar(S, maxD = 52) {
+/** The closest car she could get into within reach, or null. */
+export function nearestCar(S, maxDist = 52) {
   let best = null;
-  let bd = maxD;
+  let bestDist = maxDist;
   for (const car of S.cars) {
     if (car.dead) continue;
     const d = Math.hypot(car.x - S.player.x, car.y - S.player.y);
-    if (d < bd) {
-      bd = d;
+    if (d < bestDist) {
+      bestDist = d;
       best = car;
     }
   }
   return best;
 }
 
-/** Get into a car — politely if it is parked, by force if someone is driving it. */
+/**
+ * Get into a car. A moving traffic car means a carjacking: its driver is
+ * thrown onto the asphalt (the 'eject' event makes him a fleeing ped) and
+ * the taking is a crime, witnessed or not as the law decides.
+ */
 export function enterCar(S, car) {
   const P = S.player;
   if (car.role === 'traffic') {
-    // The driver is pulled out onto the asphalt and runs.
     S.events.push({ kind: 'crime', crime: 'carjack', x: car.x, y: car.y });
-    S.events.push({ kind: 'door', x: car.x, y: car.y });
-    const ejected = { x: car.x + Math.cos(car.angle + Math.PI / 2) * 20, y: car.y + Math.sin(car.angle + Math.PI / 2) * 20 };
-    S.events.push({ kind: 'eject', x: ejected.x, y: ejected.y });
+    const outX = car.x + Math.cos(car.angle + Math.PI / 2) * 20;
+    const outY = car.y + Math.sin(car.angle + Math.PI / 2) * 20;
+    S.events.push({ kind: 'eject', x: outX, y: outY });
   } else if (car.role === 'parked') {
     S.events.push({ kind: 'crime', crime: 'carjack', x: car.x, y: car.y });
-    S.events.push({ kind: 'door', x: car.x, y: car.y });
-  } else {
-    S.events.push({ kind: 'door', x: car.x, y: car.y });
   }
+  S.events.push({ kind: 'door', x: car.x, y: car.y });
   car.role = 'player';
   car.wasStolen = true;
   P.inCar = true;
   P.car = car;
   P.x = car.x;
   P.y = car.y;
-  S.events.push({ kind: 'engineOn' });
 }
 
-/** Step out of the current car, leaving it where it stands. */
+/** Step out, leaving the car parked where it stands. */
 export function exitCar(S) {
   const P = S.player;
   const car = P.car;
@@ -75,17 +81,17 @@ export function exitCar(S) {
   car.role = 'parked';
   P.inCar = false;
   P.car = null;
-  P.x = car.x + Math.cos(car.angle - Math.PI / 2) * (car.wid + 12);
-  P.y = car.y + Math.sin(car.angle - Math.PI / 2) * (car.wid + 12);
-  const pos = { x: P.x, y: P.y };
+  const pos = {
+    x: car.x + Math.cos(car.angle - Math.PI / 2) * (car.wid + 12),
+    y: car.y + Math.sin(car.angle - Math.PI / 2) * (car.wid + 12),
+  };
   collideCircle(S.city, pos, 9);
   P.x = pos.x;
   P.y = pos.y;
   S.events.push({ kind: 'door', x: P.x, y: P.y });
-  S.events.push({ kind: 'engineOff' });
 }
 
-/** Damage the player; armour soaks most of it. Death is the main loop's call. */
+/** Damage Juno. Armour soaks most of a hit; death is the main loop's call. */
 export function hurtPlayer(S, dmg) {
   const P = S.player;
   if (P.armor > 0) {
@@ -96,18 +102,25 @@ export function hurtPlayer(S, dmg) {
   P.hp -= dmg;
   P.hurtT = 0;
   S.events.push({ kind: 'blood', x: P.x, y: P.y, n: 4 });
-  if (P.hp <= 0 && !S.events.some((e) => e.kind === 'wasted')) S.events.push({ kind: 'wasted' });
+  if (P.hp <= 0 && !S.events.some((e) => e.kind === 'wasted')) {
+    S.events.push({ kind: 'wasted' });
+  }
 }
 
-/** Fire the pistol once toward the mouse: a fast hitscan with a little spread. */
+function angleDiff(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
+/** One pistol shot toward the mouse: fast hitscan, a whisper of spread. */
 function firePistol(S) {
   const P = S.player;
   const rng = S.rng;
   const aim = Math.atan2(S.mouseWorld.y - P.y, S.mouseWorld.x - P.x);
-  const spread = (rng() - 0.5) * 0.035;
-  const dir = aim + spread;
-  const range = 430;
-  let bestD = range;
+  const dir = aim + (rng() - 0.5) * 0.035;
+  let bestDist = PISTOL_RANGE;
   let hitPed = null;
   let hitCar = null;
   for (const ped of S.peds) {
@@ -115,12 +128,9 @@ function firePistol(S) {
     const dx = ped.x - P.x;
     const dy = ped.y - P.y;
     const d = Math.hypot(dx, dy);
-    if (d > range || d < 12) continue;
-    let diff = Math.atan2(dy, dx) - dir;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    if (Math.abs(diff) < Math.atan2(11, d) && d < bestD) {
-      bestD = d;
+    if (d > PISTOL_RANGE || d < 12 || d >= bestDist) continue;
+    if (Math.abs(angleDiff(Math.atan2(dy, dx), dir)) < Math.atan2(11, d)) {
+      bestDist = d;
       hitPed = ped;
       hitCar = null;
     }
@@ -130,50 +140,53 @@ function firePistol(S) {
     const dx = car.x - P.x;
     const dy = car.y - P.y;
     const d = Math.hypot(dx, dy);
-    if (d > range) continue;
-    let diff = Math.atan2(dy, dx) - dir;
-    while (diff > Math.PI) diff -= Math.PI * 2;
-    while (diff < -Math.PI) diff += Math.PI * 2;
-    if (Math.abs(diff) < Math.atan2(car.len * 0.55, d) && d < bestD) {
-      bestD = d;
+    if (d > PISTOL_RANGE || d >= bestDist) continue;
+    if (Math.abs(angleDiff(Math.atan2(dy, dx), dir)) < Math.atan2(car.len * 0.55, d)) {
+      bestDist = d;
       hitCar = car;
       hitPed = null;
     }
   }
-  const ex = P.x + Math.cos(dir) * bestD;
-  const ey = P.y + Math.sin(dir) * bestD;
-  S.events.push({ kind: 'tracer', x1: P.x + Math.cos(dir) * 14, y1: P.y + Math.sin(dir) * 14, x2: ex, y2: ey, color: '#ffe66d' });
+  const endX = P.x + Math.cos(dir) * bestDist;
+  const endY = P.y + Math.sin(dir) * bestDist;
+  S.events.push({
+    kind: 'tracer',
+    x1: P.x + Math.cos(dir) * 14, y1: P.y + Math.sin(dir) * 14,
+    x2: endX, y2: endY, color: '#ffe66d',
+  });
   S.events.push({ kind: 'shotSound', x: P.x, y: P.y, own: true });
   S.events.push({ kind: 'crime', crime: 'shotFired', x: P.x, y: P.y });
   S.danger = { x: P.x, y: P.y, t: 3 };
   if (hitPed) {
-    // hurtPed reports the fall as a pedDown event; the main loop's drain
-    // turns it into the right crime, so nothing is counted twice.
+    // hurtPed raises pedDown itself; the main loop turns that into the
+    // right crime, so a kill is never counted twice.
     hurtPed(S, hitPed, 22);
   } else if (hitCar) {
-    damageCar(S, hitCar, 5, ex, ey);
-    if (hitCar.role === 'police') S.events.push({ kind: 'crime', crime: 'hitPolice', x: ex, y: ey });
+    damageCar(S, hitCar, 5, endX, endY);
+    if (hitCar.role === 'police') {
+      S.events.push({ kind: 'crime', crime: 'hitPolice', x: endX, y: endY });
+    }
   }
 }
 
-/** One frame of the player: drive, walk, fight, interact. */
+/** One frame of Juno: drive if she is driving, otherwise walk and fight. */
 export function updatePlayer(S, dt) {
   const P = S.player;
   P.shootT -= dt;
   P.hurtT += dt;
+  // Badly hurt and left alone, she claws back up to a fighting minimum.
   if (P.hp > 0 && P.hp < 40 && P.hurtT > 8) P.hp = Math.min(40, P.hp + 3.2 * dt);
 
   if (P.inCar && P.car) {
     const car = P.car;
     if (car.dead) {
+      // Sitting in a burning car is its own punishment; getting out is hers.
       hurtPlayer(S, 18 * dt);
       if (tapped('KeyF', 'KeyE')) exitCar(S);
       P.x = car.x;
       P.y = car.y;
       return;
     }
-    // Steer +1 turns clockwise on screen (D), -1 counter-clockwise (A);
-    // stepCar's signed speed handles the way reversing flips the nose.
     const ctrl = {
       throttle: (held('KeyW', 'ArrowUp') ? 1 : 0) + (held('KeyS', 'ArrowDown') ? -1 : 0),
       steer: (held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0),
@@ -190,30 +203,28 @@ export function updatePlayer(S, dt) {
   // On foot.
   let mx = (held('KeyD', 'ArrowRight') ? 1 : 0) - (held('KeyA', 'ArrowLeft') ? 1 : 0);
   let my = (held('KeyS', 'ArrowDown') ? 1 : 0) - (held('KeyW', 'ArrowUp') ? 1 : 0);
-  const sprint = held('ShiftLeft', 'ShiftRight');
-  const speed = sprint ? 252 : 168;
   P.moving = mx !== 0 || my !== 0;
   if (P.moving) {
     const len = Math.hypot(mx, my);
     mx /= len;
     my /= len;
-    const surf = surfaceAt(S.city, P.x, P.y);
-    const sp = speed * (surf === 'sand' ? 0.72 : 1);
-    const pos = { x: P.x + mx * sp * dt, y: P.y + my * sp * dt };
+    const sprinting = held('ShiftLeft', 'ShiftRight');
+    const onSand = surfaceAt(S.city, P.x, P.y) === 'sand';
+    const speed = (sprinting ? SPRINT_SPEED : WALK_SPEED) * (onSand ? 0.72 : 1);
+    const pos = { x: P.x + mx * speed * dt, y: P.y + my * speed * dt };
     collideCircle(S.city, pos, 9);
     P.x = pos.x;
     P.y = pos.y;
-    P.phase += dt * (sprint ? 13 : 9.5);
+    P.phase += dt * (sprinting ? 13 : 9.5);
   }
-  // Aim follows the mouse; the body faces movement when not aiming down sights.
+  // Her body and her gun both follow the mouse.
   P.angle = Math.atan2(S.mouseWorld.y - P.y, S.mouseWorld.x - P.x);
   if (input.mouse.down && P.shootT <= 0) {
-    P.shootT = 0.22;
+    P.shootT = PISTOL_CADENCE;
     firePistol(S);
   }
   if (tapped('KeyF', 'KeyE')) {
     const car = nearestCar(S);
     if (car) enterCar(S, car);
   }
-  void input;
 }

@@ -1,20 +1,26 @@
-// The screenshot scenes behind ?shot=title|chase|foot|drive. Each one poses
-// the real game — real cars, real police, the real HUD state — at a seeded
-// moment, and the main loop then runs the world forward a few fixed steps
-// with an autopilot at the wheel, so the frame is a game being played, not
-// a diorama. The same seed stages the same scene every time.
+// shots.js — the staged scenes behind ?shot=title|chase|foot|drive, used
+// for the entry's screenshots. Each scene poses the real game — real cars,
+// real police, the real HUD state — at a seeded moment, and the main loop
+// then runs the world forward a few fixed steps with an autopilot at the
+// wheel, so the captured frame is a game being played, not a diorama. The
+// same seed stages the same scene every time, which keeps the four
+// screenshots reproducible.
 
 import { createCar } from './vehicles.js';
 import { createPed } from './pedestrians.js';
 import { setWanted } from './police.js';
 
-/** Pose the named scene on a fresh state. Returns the seconds to run it for. */
+/**
+ * Pose the named scene on a fresh state S.
+ * Returns how many seconds the scene should run before it is captured.
+ */
 export function stageShot(S, name) {
   const P = S.player;
   const city = S.city;
   switch (name) {
     case 'chase': {
-      // The cover: four stars down the Avenida del Sol, the finale's errand on the HUD.
+      // The cover shot: four stars down the Avenida del Sol, the finale's
+      // errand written on the HUD, the law in a pincer around her.
       P.inCar = true;
       const car = createCar('sports', 2022, 2150, -Math.PI / 2, 'player', S.rng);
       car.speed = 295;
@@ -24,28 +30,36 @@ export function stageShot(S, name) {
       P.x = car.x;
       P.y = car.y;
       setWanted(S, 4);
-      // A pincer, not a queue: one in the oncoming lane, one on the bumper, one on the shoulder.
-      const policeSpots = [[1978, 2240, 300], [2022, 2332, 306], [2040, 2262, 296]];
-      for (const [x, y, sp] of policeSpots) {
+      // Strung out behind her in a pursuit line — same lane, oncoming lane,
+      // shoulder — so the frame reads as a chase, not a pile-up.
+      const pursuit = [[2022, 2345, 306], [1978, 2490, 300], [2066, 2760, 312]];
+      for (const [x, y, speed] of pursuit) {
         const cop = createCar('police', x, y, -Math.PI / 2, 'police', S.rng);
-        cop.speed = sp;
+        cop.speed = speed;
         S.cars.push(cop);
       }
       const traffic = [['sedan', 2022, 1830, 150], ['compact', 1978, 1690, 140], ['coupe', 2022, 1450, 165]];
-      for (const [type, x, y, sp] of traffic) {
+      for (const [type, x, y, speed] of traffic) {
         const t = createCar(type, x, y, -Math.PI / 2, 'traffic', S.rng);
         t.axis = 'v';
         t.road = 2000;
         t.sign = -1;
-        t.speed = sp;
+        t.speed = speed;
         S.cars.push(t);
       }
-      S.objective = { title: 'Heatwave', text: "Deliver the van to Vera's yard — the law is locked on", x: city.places.warehouse.x, y: city.places.warehouse.y, timer: null };
+      S.objective = {
+        title: 'Heatwave',
+        text: "Deliver the van to Vera's yard — the law is locked on",
+        x: city.places.warehouse.x,
+        y: city.places.warehouse.y,
+        timer: null,
+      };
       S.screen = 'play';
       return 1.3;
     }
     case 'foot': {
-      // On foot on the Palmera Strip: Serpents ahead, Vera on the phone, the city walking by.
+      // On foot on the Palmera Strip: Serpents ahead, Tito at her shoulder,
+      // Vera on the phone, one star of law already interested.
       P.x = 3738;
       P.y = 1040;
       P.angle = -0.5;
@@ -63,7 +77,11 @@ export function stageShot(S, name) {
       const cop = createCar('police', 3660, 1130, 0.7, 'police', S.rng);
       S.cars.push(cop);
       setWanted(S, 1);
-      S.objective = { title: 'Serpent Season', text: 'Clear the Glass Serpents — 3 left', x: 3800, y: 950, timer: null };
+      S.objective = {
+        title: 'Serpent Season',
+        text: 'Clear the Glass Serpents — 3 left',
+        x: 3800, y: 950, timer: null,
+      };
       S.dialogue = {
         lines: [{ who: 'Vera Solano', text: "Ivo's boys, dead ahead. Loud or quiet, Juno — but finish it." }],
         i: 0,
@@ -72,7 +90,7 @@ export function stageShot(S, name) {
       return 0.9;
     }
     case 'drive': {
-      // A courier run along the shore: the checkpoint pillar burning by the beach.
+      // A courier run along the shore road, the beach checkpoint ahead.
       P.inCar = true;
       const car = createCar('coupe', 3980, 1402, 0, 'player', S.rng);
       car.speed = 235;
@@ -87,13 +105,18 @@ export function stageShot(S, name) {
       van.sign = -1;
       van.speed = 120;
       S.cars.push(van);
-      S.objective = { title: 'Courier Run', text: 'Deliver the package to Bahia Beach', x: 4470, y: 1380, timer: 74 };
+      S.objective = {
+        title: 'Courier Run',
+        text: 'Deliver the package to Bahia Beach',
+        x: 4470, y: 1380, timer: 74,
+      };
       S.checkpoints = null;
       S.screen = 'play';
       return 1.4;
     }
     default: {
-      // The title: the camera drifts over the Old Marina at golden hour.
+      // The title scene: no staging at all — the camera drifts over the
+      // Old Marina at golden hour behind the wordmark.
       S.screen = 'title';
       P.x = city.places.warehouse.x;
       P.y = city.places.warehouse.y + 60;
@@ -102,15 +125,18 @@ export function stageShot(S, name) {
   }
 }
 
-/** The autopilot that drives the player's car while a scene runs: hold the lane, keep speed. */
-export function shotDrive(S, dt) {
+/**
+ * The autopilot that drives Juno's car while a scene runs: aim at a point
+ * ahead of the nose and hold a brisk pace. Returns a steerControls target,
+ * or null when she is on foot.
+ */
+export function shotDrive(S) {
   const car = S.player.car;
   if (!car) return null;
-  void dt;
-  const ahead = 190;
+  const lookAhead = 190;
   return {
-    tx: car.x + Math.cos(car.angle) * ahead,
-    ty: car.y + Math.sin(car.angle) * ahead,
+    tx: car.x + Math.cos(car.angle) * lookAhead,
+    ty: car.y + Math.sin(car.angle) * lookAhead,
     want: car.top * 0.72,
   };
 }

@@ -671,7 +671,8 @@ if (SHOT) {
       // The wheel trims the camera: in for detail, out for the chase.
       const notches = consumeWheel();
       if (notches !== 0) {
-        S.zoomBias = Math.max(0.75, Math.min(1.2, S.zoomBias * (notches < 0 ? 1.09 : 0.92)));
+        // Zooming in answers a little faster than zooming out releases.
+        S.zoomBias = Math.max(0.75, Math.min(1.2, S.zoomBias * (notches < 0 ? 1.1 : 0.92)));
       }
       if (tapped('Escape', 'KeyP')) {
         S.screen = 'pause';

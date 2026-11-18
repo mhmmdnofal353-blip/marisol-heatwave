@@ -87,7 +87,7 @@ export function stageShot(S, name) {
         i: 0,
       };
       S.screen = 'play';
-      return 0.9;
+      return 1.05; // long enough for Vera's dialogue box to settle open
     }
     case 'beach': {
       // The Dune Raider on the shore road, hunting the parcels: seven
@@ -144,6 +144,6 @@ export function shotDrive(S) {
   return {
     tx: car.x + Math.cos(car.angle) * lookAhead,
     ty: car.y + Math.sin(car.angle) * lookAhead,
-    want: car.top * 0.72,
+    want: car.top * 0.75, // a brisk pace: the cover frame should feel fast
   };
 }

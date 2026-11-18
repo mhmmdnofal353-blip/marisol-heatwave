@@ -37,7 +37,7 @@ export function createCar(typeKey, x, y, angle, role, rng) {
     axis: null,
     sign: 1,
     road: 0,
-    cruise: range(rng, 0.38, 0.52), // share of top speed this driver settles at
+    cruise: range(rng, 0.4, 0.54), // share of top speed this driver settles at — the city's traffic flows a little brisker than a crawl
     honkT: 0,
     lightT: range(rng, 0, 1), // police light-bar phase
     dead: false,

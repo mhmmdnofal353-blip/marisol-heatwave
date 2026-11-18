@@ -303,7 +303,9 @@ export function sideJob(S, kind) {
             for (let i = 0; i < rivalTypes.length; i++) {
               const car = createCar(rivalTypes[i], 1392 - i * 6, 1964 + i * 44, 0, 'racer', S2.rng);
               car.cp = 0;
-              car.skill = 0.85 - i * 0.04;
+              // A rematch should bite harder than the first meeting did:
+              // both Shore Run regulars run a touch hotter than the Kings.
+              car.skill = 0.87 - i * 0.04;
               S2.cars.push(car);
               M.data.rivals.push(car);
               M.ownCar(car);

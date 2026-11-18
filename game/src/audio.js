@@ -154,10 +154,11 @@ export function sfxSting() {
   noise(0.4, 0.12, 200, 0.6);
 }
 
-/** A traffic horn, close enough to hear. */
+/** A traffic horn, close enough to hear — voiced a touch louder than the
+ *  mix's background effects, since a horn's whole job is to cut through. */
 export function sfxHorn() {
-  tone(370, 0.18, 'square', 0.08);
-  tone(466, 0.18, 'square', 0.06, null, 0.01);
+  tone(370, 0.18, 'square', 0.1);
+  tone(466, 0.18, 'square', 0.075, null, 0.01);
 }
 
 /** An explosion: low noise rolling into a sub-bass thump. */

@@ -434,11 +434,14 @@ function drawStashes(ctx, S) {
   for (const stash of S.city.stashes) {
     if (stash.taken || !inView(S, stash.x, stash.y, 60)) continue;
     const bob = Math.sin(S.time * 2.6 + stash.id * 1.7) * 2.2;
+    // The ring brightens and swells as Juno closes in: a quiet promise
+    // that she is nearly on top of this one.
+    const near = Math.max(0, 1 - Math.hypot(stash.x - S.player.x, stash.y - S.player.y) / 300);
     ctx.save();
-    ctx.strokeStyle = `rgba(123,241,168,${0.5 + Math.sin(S.time * 3.4 + stash.id) * 0.2})`;
+    ctx.strokeStyle = `rgba(123,241,168,${0.5 + Math.sin(S.time * 3.4 + stash.id) * 0.2 + near * 0.3})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(stash.x, stash.y, 15 + Math.sin(S.time * 3.4 + stash.id) * 2.4, 6.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(stash.x, stash.y, 15 + Math.sin(S.time * 3.4 + stash.id) * 2.4 + near * 4, 6.5 + near * 1.6, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.translate(stash.x, stash.y + bob);
     ctx.rotate(0.5);

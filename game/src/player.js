@@ -34,8 +34,10 @@ export function createPlayer(x, y) {
   };
 }
 
-/** The closest car she could get into within reach, or null. */
-export function nearestCar(S, maxDist = 52) {
+/** The closest car she could get into within reach, or null. The reach
+ *  is a stride past the prompt's own radius, so a car she is offered is
+ *  always a car she can actually take. */
+export function nearestCar(S, maxDist = 56) {
   let best = null;
   let bestDist = maxDist;
   for (const car of S.cars) {

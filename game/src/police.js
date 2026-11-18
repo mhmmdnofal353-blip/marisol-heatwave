@@ -138,7 +138,7 @@ function staffTheHunt(S, dt) {
     W.spawnT -= dt;
     if (W.spawnT <= 0) {
       dispatchCar(S);
-      W.spawnT = 1.6;
+      W.spawnT = 1.5; // reinforcements answer a shade faster than they did
     }
   }
   // Distant units are called off; a wreck near the player stays as scenery.

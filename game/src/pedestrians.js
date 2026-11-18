@@ -12,8 +12,8 @@ import { collideCircle } from './city.js';
 const WALKER_TARGET = 26;
 let nextPedId = 1;
 
-const HAIR_COLOURS = ['#22223b', '#6f1d1b', '#99582a', '#e0aaff', '#f2f2f2'];
-const PANTS_COLOURS = ['#26303a', '#5b4a3f', '#31556b', '#6b3155', '#3a3f4a', '#7a6a53'];
+const HAIR_COLOURS = ['#22223b', '#6f1d1b', '#99582a', '#e0aaff', '#f2f2f2', '#8a6642'];
+const PANTS_COLOURS = ['#26303a', '#5b4a3f', '#31556b', '#6b3155', '#3a3f4a', '#7a6a53', '#274156'];
 
 /** Create a pedestrian. `role` is 'walker' unless a mission or the law says otherwise. */
 export function createPed(x, y, rng, role = 'walker') {

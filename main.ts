@@ -39,7 +39,9 @@ if (existsSync(shotsDir)) cpSync(shotsDir, join(outDir, 'screenshots'), { recurs
 // anyway: over 4 screenshots or one past 256 KiB, a game/ past 993 entries
 // or 48 MiB, or a single game/ path past 1000 bytes. /output as a whole is
 // capped at 1000 entries and 64 MiB, shared by game/, screenshots/ and
-// dossier.json, so the margins matter.
+// dossier.json, so the margins matter. The four screenshots are the staged
+// scenes listed in shots.json; take-screenshots.mjs enforces the same
+// 256 KiB cap at capture time, so a breach is caught long before hand-in.
 const dossier = buildDossier(outDir, {
   text_max_bytes: 163840,
   screenshots: { max: 4, max_bytes: 262144 },

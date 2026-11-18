@@ -63,7 +63,7 @@ export const CAR_TYPES = {
   coupe: { label: 'Vireo Coupe', len: 40, wid: 18, top: 345, accel: 390, grip: 7.8, hp: 85, colours: ['#e07a5f', '#3d405b', '#81b29a', '#f2cc8f'] },
   sports: { label: 'Katana GT', len: 42, wid: 19, top: 405, accel: 470, grip: 8.4, hp: 80, colours: ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#9b5de5'] },
   buggy: { label: 'Dune Raider', len: 36, wid: 19, top: 330, accel: 430, grip: 8.6, hp: 75, sand: 0.85, colours: ['#ffb703', '#06d6a0', '#ef476f', '#f4f1de'] },
-  suv: { label: 'Bastion SUV', len: 44, wid: 21, top: 285, accel: 300, grip: 6.4, hp: 130, colours: ['#22223b', '#4a4e69', '#9a8c98', '#c9ada7'] },
+  suv: { label: 'Bastion SUV', len: 44, wid: 21, top: 285, accel: 300, grip: 6.4, hp: 130, sand: 0.55, colours: ['#22223b', '#4a4e69', '#9a8c98', '#c9ada7'] },
   van: { label: 'Hauler Van', len: 46, wid: 21, top: 255, accel: 260, grip: 6.0, hp: 140, colours: ['#e8e9eb', '#b8b8bd', '#5e60ce'] },
   armored: { label: 'Brinks Armored Van', len: 48, wid: 22, top: 270, accel: 270, grip: 6.2, hp: 260, colours: ['#5b6770'] },
   police: { label: 'MBPD Interceptor', len: 42, wid: 19, top: 385, accel: 440, grip: 8.2, hp: 150, sand: 0.62, colours: ['#f4f6f8'] },

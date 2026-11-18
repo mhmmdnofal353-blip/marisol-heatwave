@@ -119,6 +119,11 @@ try {
     if (bytes > 262144) {
       throw new Error(`${scene.name} is ${bytes} bytes, over the 256 KiB cap`);
     }
+    // A frame of a few kilobytes is a blank or unpainted page wearing a
+    // scene's name; that, too, is cheaper to catch here than at the gate.
+    if (bytes < 8000) {
+      throw new Error(`${scene.name} is only ${bytes} bytes — the scene likely never painted`);
+    }
   }
   socket.close();
 } finally {

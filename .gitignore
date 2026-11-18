@@ -4,3 +4,8 @@ out/
 # Local litter: editor and capture by-products are not part of the game
 .DS_Store
 *.log
+*.swp
+
+# Headless-capture scratch: Chrome profiles and half-written frames
+.chrome-profile/
+*.tmp

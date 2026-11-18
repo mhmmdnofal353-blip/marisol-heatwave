@@ -27,6 +27,7 @@ export function bindInput(canvas) {
     input.keys.clear();
     input.pressed.clear();
     input.mouse.down = false;
+    input.wheel = 0; // a notch queued as focus left must not zoom on return
   });
   canvas.addEventListener('mousemove', (event) => {
     const box = canvas.getBoundingClientRect();

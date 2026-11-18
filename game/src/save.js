@@ -13,7 +13,9 @@ export function loadSave() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    const usable = typeof data === 'object' && data !== null && typeof data.cash === 'number';
+    // A hand-edited or half-written save can carry NaN or a string where
+    // the purse should be; only a finite cash figure is worth trusting.
+    const usable = typeof data === 'object' && data !== null && Number.isFinite(data.cash);
     return usable ? data : null;
   } catch {
     return null;
@@ -46,6 +48,7 @@ export function hasSave() {
 /** The slice of the live state worth keeping between visits. */
 export function snapshotOf(S) {
   return {
+    v: 1, // save format version, so a future shape can be told apart
     cash: S.player.cash,
     respect: S.player.respect,
     storyIdx: S.storyIdx,

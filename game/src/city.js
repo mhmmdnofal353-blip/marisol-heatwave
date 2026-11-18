@@ -21,7 +21,7 @@ const PALETTES = {
   heights: ['#f6bd60', '#f7ede2', '#f5cac3', '#84a98c', '#e5989b'],
   strip: ['#ff8fa3', '#ffb703', '#8ecae6', '#f4f1de', '#e07a5f', '#81b29a'],
   downtown: ['#e9c46a', '#f4a261', '#e76f51', '#2a9d8f', '#a8dadc', '#f1fa8c'],
-  flats: ['#9a8c98', '#6d6875', '#b5838d', '#7f7f7f'],
+  flats: ['#9a8c98', '#6d6875', '#b5838d', '#8b7d6b'],
   docks: ['#6c757d', '#495057', '#7d8597', '#5e60ce'],
   marina: ['#caf0f8', '#ade8f4', '#90e0ef', '#f4f1de'],
 };

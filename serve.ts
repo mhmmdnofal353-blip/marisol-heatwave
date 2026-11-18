@@ -77,6 +77,16 @@ const server = createServer((req, res) => {
   createReadStream(filePath).pipe(res);
 });
 
+server.on('error', (err: NodeJS.ErrnoException) => {
+  // The common case: another server (or an earlier serve.ts) holds the port.
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use — try --port ${port + 1}.`);
+  } else {
+    console.error(`serve.ts: ${err.message}`);
+  }
+  process.exit(1);
+});
+
 server.listen(port, host, () => {
   console.log(`Marisol Heatwave is serving game/ at http://${host}:${port}`);
 });

@@ -38,7 +38,9 @@ out the search, or buy a SunSpray respray and drive out clean in a
 different colour. Fight on foot with mouse-aimed pistol combat, follow
 the minimap blips (the mint pips are parcels still out there) and the
 objective banner, earn cash and respect, and rest at Juno's loft to heal
-and save.
+and save. A parcel's mint ring brightens as you close on it, and the
+minimap's parcel pips breathe, so a careful driver can sweep a district
+clean without ever opening the pause screen.
 
 Controls: WASD or arrows to walk and drive, mouse to aim, click to shoot,
 scroll to trim the camera zoom, F or E to enter cars and take work, Space

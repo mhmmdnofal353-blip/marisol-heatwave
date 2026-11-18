@@ -111,9 +111,10 @@ export function drawMinimap(ctx, S, cx, cy, radius) {
   if (S.city.places.safehouse) {
     blip(S.city.places.safehouse.x, S.city.places.safehouse.y, '#ffffff', 3);
   }
-  // Hidden parcels still out there show as small mint pips in range.
+  // Hidden parcels still out there show as small mint pips in range,
+  // breathing gently so the eye catches them among the static blips.
   for (const stash of S.city.stashes) {
-    if (!stash.taken) blip(stash.x, stash.y, '#7bf1a8', 2.6);
+    if (!stash.taken) blip(stash.x, stash.y, '#7bf1a8', 2.7 + Math.sin(S.time * 3.4 + stash.id) * 0.5);
   }
   if (S.marker && S.screen === 'play') blip(S.marker.x, S.marker.y, '#ffd166', 4);
   for (const ped of S.peds) {

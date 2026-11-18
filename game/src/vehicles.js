@@ -9,7 +9,7 @@ import { CAR_TYPES, ROADS } from './config.js';
 import { pick, range, chance } from './random.js';
 import { collideCircle, roadPoint, surfaceAt } from './city.js';
 
-const TRAFFIC_MIX = ['compact', 'sedan', 'sedan', 'coupe', 'suv', 'van', 'taxi', 'compact'];
+const TRAFFIC_MIX = ['compact', 'sedan', 'sedan', 'coupe', 'suv', 'van', 'taxi', 'compact', 'buggy'];
 const TRAFFIC_TARGET = 15;
 
 /** Create a car of a catalogue type at a place, facing `angle` radians. */
@@ -23,6 +23,7 @@ export function createCar(typeKey, x, y, angle, role, rng) {
     top: spec.top,
     accel: spec.accel,
     grip: spec.grip,
+    sandGrip: spec.sand ?? 0.45, // share of top speed kept on the beach
     maxHp: spec.hp,
     hp: spec.hp,
     color: pick(rng, spec.colours),
@@ -92,8 +93,16 @@ export function stepCar(S, car, dt, ctrl) {
     return;
   }
   const surf = surfaceAt(S.city, car.x, car.y);
-  const topHere = car.top * (surf === 'sand' ? 0.45 : surf === 'park' ? 0.6 : 1);
-  const accelHere = car.accel * (surf === 'sand' ? 0.55 : 1);
+  const topHere = car.top * (surf === 'sand' ? car.sandGrip : surf === 'park' ? 0.6 : 1);
+  const accelHere = car.accel * (surf === 'sand' ? 0.3 + car.sandGrip * 0.6 : 1);
+  // Fast on sand throws a pale rooster tail of dust behind the tyres.
+  if (surf === 'sand' && Math.abs(car.speed) > 95 && S.rng() < 0.4) {
+    S.events.push({
+      kind: 'dust',
+      x: car.x - Math.cos(car.angle) * car.len * 0.5,
+      y: car.y - Math.sin(car.angle) * car.len * 0.5,
+    });
+  }
 
   if (ctrl.throttle > 0) {
     car.speed += accelHere * ctrl.throttle * dt;
@@ -324,6 +333,7 @@ export function seedParkedCars(S) {
     ['sports', S.city.places.warehouse.x + 70, S.city.places.warehouse.y + 26, 0.2],
     ['coupe', S.city.places.safehouse.x - 60, S.city.places.safehouse.y + 20, -0.4],
     ['sedan', S.city.places.cafe.x + 56, S.city.places.cafe.y + 24, 0.1],
+    ['buggy', 4470, 2140, -0.5], // a Dune Raider left on the shore track, keys in
   ];
   for (const [type, x, y, angle] of extras) {
     S.cars.push(createCar(type, x, y, angle, 'parked', rng));

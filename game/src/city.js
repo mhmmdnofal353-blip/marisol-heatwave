@@ -6,8 +6,8 @@
 // city gives out to beach and sea. The other modules ask this file where
 // roads run, what ground a point stands on, and what a moving circle hits.
 
-import { WORLD, ROADS, BEACH_X, WATER_X } from './config.js';
-import { range, int, pick, chance } from './random.js';
+import { WORLD, ROADS, BEACH_X, WATER_X, STASH } from './config.js';
+import { range, int, pick, chance, shuffle } from './random.js';
 
 const HALF_ROAD = ROADS.width / 2;
 const BLOCK_INSET = HALF_ROAD + 18; // building line: this far from a road centre
@@ -38,13 +38,7 @@ function districtOf(col, row) {
 
 /** A name source that hands out each name once before repeating any. */
 function shuffledNames(rng, names) {
-  const bag = [...names];
-  for (let i = bag.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    const tmp = bag[i];
-    bag[i] = bag[j];
-    bag[j] = tmp;
-  }
+  const bag = shuffle(rng, names);
   return { next: () => (bag.length > 0 ? bag.pop() : pick(rng, names)) };
 }
 
@@ -55,7 +49,8 @@ export function buildCity(rng) {
   const offices = shuffledNames(rng, OFFICE_NAMES);
   const city = {
     buildings: [], parks: [], lots: [], palms: [], trees: [], lamps: [],
-    crates: [], umbrellas: [], blockers: [], parkedSpots: [], places: {}, blocks: [],
+    crates: [], umbrellas: [], towels: [], stashes: [], blockers: [],
+    parkedSpots: [], places: {}, blocks: [],
   };
   const addBuilding = (b) => {
     city.buildings.push(b);
@@ -111,7 +106,41 @@ export function buildCity(rng) {
       city.lamps.push({ x: ax + HALF_ROAD + 6, y: sy + HALF_ROAD + 6 });
     }
   }
+  // Beach towels, left where the sunbathers dropped them.
+  for (let i = 0; i < 18; i++) {
+    city.towels.push({
+      x: range(rng, BEACH_X + 50, WATER_X - 50),
+      y: range(rng, 90, WORLD.height - 90),
+      a: range(rng, 0, Math.PI),
+      c: pick(rng, ['#ef476f', '#ffd166', '#06d6a0', '#118ab2', '#f4f1de']),
+    });
+  }
+  city.stashes = placeStashes(city, rng);
   return city;
+}
+
+/**
+ * Hide the parcels. Vera's runners dropped one on open ground all over
+ * the bay — park lawns, car-park centres, place forecourts, the sand —
+ * never inside a building, so every one can be walked or driven over.
+ * The spots are dealt from a shuffled deck, so the hunt's map is the
+ * city's own geography, not a designer's list.
+ */
+function placeStashes(city, rng) {
+  const spots = [];
+  for (const park of city.parks) spots.push({ x: park.x + park.w * 0.32, y: park.y + park.h * 0.4 });
+  for (const lot of city.lots) spots.push({ x: lot.x + lot.w / 2, y: lot.y + lot.h / 2 });
+  const doors = [city.places.warehouse, city.places.safehouse, city.places.hospital,
+    city.places.police, city.places.cafe, city.places.chopshop, ...(city.places.garages ?? [])];
+  for (const place of doors) {
+    if (place) spots.push({ x: place.x + 46, y: place.y - 4 });
+  }
+  for (let i = 0; i < 6; i++) {
+    spots.push({ x: range(rng, BEACH_X + 70, WATER_X - 50), y: range(rng, 220, WORLD.height - 220) });
+  }
+  return shuffle(rng, spots)
+    .slice(0, STASH.count)
+    .map((spot, id) => ({ id, x: spot.x, y: spot.y, taken: false }));
 }
 
 /** Fill an ordinary block: a park, a car park, or buildings, by the roll. */

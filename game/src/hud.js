@@ -111,6 +111,10 @@ export function drawMinimap(ctx, S, cx, cy, radius) {
   if (S.city.places.safehouse) {
     blip(S.city.places.safehouse.x, S.city.places.safehouse.y, '#ffffff', 3);
   }
+  // Hidden parcels still out there show as small mint pips in range.
+  for (const stash of S.city.stashes) {
+    if (!stash.taken) blip(stash.x, stash.y, '#7bf1a8', 2.6);
+  }
   if (S.marker && S.screen === 'play') blip(S.marker.x, S.marker.y, '#ffd166', 4);
   for (const ped of S.peds) {
     if (ped.dead || ped.inCar) continue;
@@ -192,16 +196,18 @@ export function drawHUD(ctx, S, W, H) {
   if (shakingOff) label(ctx, 'LOSING THEM…', W - 34, 66, 11, '#9fd8ff', 'right', 700);
   label(ctx, `$${P.cash.toLocaleString('en-US')}`, W - 30, 100, 27, '#7bf1a8', 'right', 800);
   label(ctx, `RESPECT · LV ${Math.floor(P.respect / 60) + 1}`, W - 30, 122, 12, '#ffd166', 'right', 700);
+  const parcelsFound = S.city.stashes.filter((s) => s.taken).length;
+  label(ctx, `PARCELS · ${parcelsFound}/${S.city.stashes.length}`, W - 30, 141, 11.5, '#7bf1a8', 'right', 700);
 
   // The BUSTED meter, only while it is filling.
   if (S.wanted.bust > 0.02) {
-    panel(ctx, W - 190, 132, 160, 12, 6);
+    panel(ctx, W - 190, 152, 160, 12, 6);
     ctx.fillStyle = 'rgba(10,16,22,0.7)';
     ctx.fill();
-    panel(ctx, W - 190, 132, 160 * S.wanted.bust, 12, 6);
+    panel(ctx, W - 190, 152, 160 * S.wanted.bust, 12, 6);
     ctx.fillStyle = '#ef476f';
     ctx.fill();
-    label(ctx, 'BUSTED', W - 110, 126, 11, '#ef476f', 'center', 800);
+    label(ctx, 'BUSTED', W - 110, 146, 11, '#ef476f', 'center', 800);
   }
 
   // Bottom left over the minimap: health, and armour when she wears any.
@@ -388,12 +394,12 @@ export function menuItemBox(W, H, index, count) {
 
 const HOWTO_TEXT = [
   'WASD / Arrows — walk and drive · Shift — sprint',
-  'Mouse — aim · Click — shoot (on foot)',
+  'Mouse — aim · Click — shoot (on foot) · Wheel — camera zoom',
   'F / E — enter and leave cars, talk, take work',
-  'Space — handbrake · P / Esc — pause · M — mute',
+  'Space — handbrake · H — honk · P / Esc — pause · M — mute',
   '',
-  'Steal cars. Run Vera\'s story from the freight warehouse.',
-  'Take side work at Café Palma, the SunSpray garage, the chop shop.',
+  'Steal cars. Run Vera\'s story. Bank the glowing parcels you find.',
+  'Take side work at Café Palma, the SunSpray garages, the chop shop.',
   'Crime that is seen is heat earned, and stars bring the MBPD:',
   'lose their eyes and wait out the search, or pay for a respray.',
   'Busted costs a fine. Wasted costs the hospital. Both cost the job.',
@@ -413,7 +419,8 @@ export function drawMenus(ctx, S, W, H) {
     });
   } else if (S.screen === 'pause') {
     label(ctx, 'PAUSED', W / 2, H * 0.3, 40, '#ffffff', 'center', 900);
-    const stats = `$${S.player.cash.toLocaleString('en-US')} · Respect ${S.player.respect} · Story ${Math.min(S.storyIdx, 6)}/6`;
+    const banked = S.city.stashes.filter((s) => s.taken).length;
+    const stats = `$${S.player.cash.toLocaleString('en-US')} · Respect ${S.player.respect} · Story ${Math.min(S.storyIdx, 6)}/6 · Parcels ${banked}/${S.city.stashes.length}`;
     label(ctx, stats, W / 2, H * 0.3 + 34, 15, '#b8d4e2', 'center', 500);
   } else if (S.screen === 'busted') {
     label(ctx, 'BUSTED', W / 2, H * 0.34, 64, '#4dabff', 'center', 900);
@@ -423,7 +430,7 @@ export function drawMenus(ctx, S, W, H) {
     label(ctx, 'Marisol General patches you up and bills you 10% of your cash.', W / 2, H * 0.34 + 40, 16, '#eaf6fb', 'center', 500);
   } else if (S.screen === 'complete') {
     label(ctx, 'STORY COMPLETE', W / 2, H * 0.3, 46, '#ffd166', 'center', 900);
-    label(ctx, 'Marisol Bay is Juno\'s now. The city stays open: side work, street races,', W / 2, H * 0.3 + 38, 16, '#eaf6fb', 'center', 500);
+    label(ctx, 'Marisol Bay is Juno\'s now. The city stays open: side work, street races, hidden parcels,', W / 2, H * 0.3 + 38, 16, '#eaf6fb', 'center', 500);
     label(ctx, 'and all the trouble you can buy. Your game is saved.', W / 2, H * 0.3 + 62, 16, '#eaf6fb', 'center', 500);
   }
 

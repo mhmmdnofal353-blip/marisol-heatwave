@@ -1,6 +1,8 @@
 // serve.ts — a pocket static server for the game/ folder, Node 22 standard
 // library only. `node serve.ts` (or `--port 9000`) puts the game on
 // http://localhost:8080 so it can be played locally with no build step.
+// `--host 0.0.0.0` opens it to the local network for a phone playtest;
+// the default stays loopback-only.
 // It knows the content types a browser game asks for, answers 404 for what
 // is not there, and refuses to serve anything outside game/. It is a
 // development convenience; it is not hardened for the open internet.
@@ -15,6 +17,8 @@ const argv = process.argv.slice(2);
 const portFlag = argv.indexOf('--port');
 const asked = portFlag === -1 ? 8080 : Number(argv[portFlag + 1]);
 const port = Number.isInteger(asked) && asked > 0 && asked < 65536 ? asked : 8080;
+const hostFlag = argv.indexOf('--host');
+const host = hostFlag === -1 ? '127.0.0.1' : String(argv[hostFlag + 1] ?? '127.0.0.1');
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -73,6 +77,6 @@ const server = createServer((req, res) => {
   createReadStream(filePath).pipe(res);
 });
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Marisol Heatwave is serving game/ at http://localhost:${port}`);
+server.listen(port, host, () => {
+  console.log(`Marisol Heatwave is serving game/ at http://${host}:${port}`);
 });

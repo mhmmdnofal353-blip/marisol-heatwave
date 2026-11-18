@@ -1,5 +1,6 @@
 // save.js — the saved game. One slot in localStorage holding Juno's cash,
-// respect, story progress and last position. Written when she rests at the
+// respect, story progress, last position, and the hidden parcels she has
+// already banked. Written when she rests at the
 // loft, after every mission, and from the pause menu; read at boot for the
 // title screen's Continue button. Every access is guarded: a browser that
 // refuses storage simply plays without saving.
@@ -49,6 +50,7 @@ export function snapshotOf(S) {
     respect: S.player.respect,
     storyIdx: S.storyIdx,
     sideDone: S.sideDone,
+    stashIds: S.city.stashes.filter((s) => s.taken).map((s) => s.id),
     x: Math.round(S.player.x),
     y: Math.round(S.player.y),
     when: Date.now(),

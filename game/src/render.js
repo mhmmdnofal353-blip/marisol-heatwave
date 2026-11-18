@@ -93,6 +93,9 @@ function inView(S, x, y, pad = 80) {
 /** Draw the whole world, then the golden-hour light over it. */
 export function drawWorld(ctx, S, W, H) {
   const cam = S.camera;
+  // The light breathes: a slow drift between late gold and early dusk,
+  // one long cycle the shadows, the lamps and the wash all read from.
+  S.daylight = 0.8 + 0.2 * Math.sin(S.time * 0.01 + 0.8);
   ctx.save();
   ctx.translate(W / 2, H / 2);
   ctx.scale(cam.zoom, cam.zoom);
@@ -106,6 +109,7 @@ export function drawWorld(ctx, S, W, H) {
   drawRoads(ctx, S, vx0, vy0, vx1, vy1);
   drawBlocks(ctx, S, vx0, vy0, vx1, vy1);
   drawMarkers(ctx, S);
+  drawStashes(ctx, S);
   drawSkids(ctx, S);
   for (const car of S.cars) if (inView(S, car.x, car.y, 90)) drawCar(ctx, S, car);
   for (const ped of S.peds) if (!ped.inCar && inView(S, ped.x, ped.y, 40)) drawPed(ctx, S, ped);
@@ -113,11 +117,13 @@ export function drawWorld(ctx, S, W, H) {
   drawFx(ctx, S);
   ctx.restore();
 
-  // Golden hour: warm from the top-left, dusk violet at the far corner.
+  // Golden hour: warm from the top-left, dusk violet at the far corner —
+  // the violet deepens as the light drifts down toward evening.
+  const dusk = 1 - S.daylight;
   const wash = ctx.createLinearGradient(0, 0, W, H);
-  wash.addColorStop(0, 'rgba(255,190,90,0.07)');
+  wash.addColorStop(0, `rgba(255,190,90,${0.07 - dusk * 0.03})`);
   wash.addColorStop(0.55, 'rgba(255,140,80,0.03)');
-  wash.addColorStop(1, 'rgba(70,30,80,0.10)');
+  wash.addColorStop(1, `rgba(70,30,80,${0.10 + dusk * 0.22})`);
   ctx.fillStyle = wash;
   ctx.fillRect(0, 0, W, H);
 }
@@ -253,10 +259,11 @@ function drawBlocks(ctx, S, vx0, vy0, vx1, vy1) {
     }
     ctx.stroke();
   }
-  // Building shadows first, thrown long by the low sun.
+  // Building shadows first, thrown long by the low sun — longer still
+  // as the light drifts toward dusk.
   for (const b of city.buildings) {
     if (!onScreen(b.x, b.y, b.w, b.h)) continue;
-    const throwLen = 7 + b.floors * 1.7;
+    const throwLen = (7 + b.floors * 1.7) * (1.3 - 0.35 * (S.daylight ?? 1));
     ctx.fillStyle = 'rgba(30,20,10,0.30)';
     ctx.fillRect(b.x + throwLen, b.y + throwLen * 0.7, b.w, b.h);
   }
@@ -304,6 +311,30 @@ function drawBlocks(ctx, S, vx0, vy0, vx1, vy1) {
     ctx.beginPath();
     ctx.arc(lamp.x, lamp.y, 2.6, 0, Math.PI * 2);
     ctx.fill();
+    // As the light dips the lamps come on, one warm halo at a time.
+    const glow = (0.88 - (S.daylight ?? 1)) * 2.4;
+    if (glow > 0.04) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.5, glow);
+      ctx.fillStyle = '#ffd98a';
+      ctx.beginPath();
+      ctx.arc(lamp.x, lamp.y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = '#2f3542';
+    }
+  }
+  // Beach towels: bright rectangles abandoned on the sand.
+  for (const towel of city.towels) {
+    if (!inView(S, towel.x, towel.y, 24)) continue;
+    ctx.save();
+    ctx.translate(towel.x, towel.y);
+    ctx.rotate(towel.a);
+    ctx.fillStyle = towel.c;
+    ctx.fillRect(-8, -4.5, 16, 9);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(-8, -1.2, 16, 2.4);
+    ctx.restore();
   }
   for (const umb of city.umbrellas) {
     if (!inView(S, umb.x, umb.y, 26)) continue;
@@ -394,6 +425,36 @@ function drawMarkers(ctx, S) {
   }
 }
 
+/**
+ * The hidden parcels still out there: a small gold drop-box under a
+ * mint glow, bobbing gently, with a sparkle that climbs and fades.
+ * Nearer and quieter than a mission beam — a secret, not a signpost.
+ */
+function drawStashes(ctx, S) {
+  for (const stash of S.city.stashes) {
+    if (stash.taken || !inView(S, stash.x, stash.y, 60)) continue;
+    const bob = Math.sin(S.time * 2.6 + stash.id * 1.7) * 2.2;
+    ctx.save();
+    ctx.strokeStyle = `rgba(123,241,168,${0.5 + Math.sin(S.time * 3.4 + stash.id) * 0.2})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(stash.x, stash.y, 15 + Math.sin(S.time * 3.4 + stash.id) * 2.4, 6.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.translate(stash.x, stash.y + bob);
+    ctx.rotate(0.5);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(-6.5, -6.5, 13, 13);
+    ctx.fillStyle = '#06d6a0';
+    ctx.fillRect(-6.5, -1.8, 13, 3.6);
+    ctx.fillRect(-1.8, -6.5, 3.6, 13);
+    ctx.restore();
+    ctx.fillStyle = `rgba(255,255,255,${0.35 + 0.3 * Math.sin(S.time * 5 + stash.id * 2.3)})`;
+    ctx.beginPath();
+    ctx.arc(stash.x + 8, stash.y - 12 + bob, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 /** A pillar of light with a pulsing ground ring: the genre's signpost. */
 function drawBeam(ctx, S, x, y, color, r) {
   const pulse = 1 + Math.sin(S.time * 4.4) * 0.1;
@@ -462,8 +523,29 @@ function drawCar(ctx, S, car) {
   ctx.lineWidth = 1.2;
   ctx.stroke();
   if (!car.dead) drawCarLivery(ctx, car, L, Wd);
-  // Glasshouse, except on the box vans.
-  if (car.type !== 'van' && car.type !== 'armored') {
+  // The buggy has no glasshouse: an open roll cage and a spare wheel.
+  if (car.type === 'buggy' && !car.dead) {
+    ctx.strokeStyle = '#26303a';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(-L * 0.22, -Wd / 2 + 2.4);
+    ctx.lineTo(-L * 0.22, Wd / 2 - 2.4);
+    ctx.moveTo(L * 0.14, -Wd / 2 + 2.4);
+    ctx.lineTo(L * 0.14, Wd / 2 - 2.4);
+    ctx.moveTo(-L * 0.22, 0);
+    ctx.lineTo(L * 0.14, 0);
+    ctx.stroke();
+    ctx.fillStyle = '#14151a';
+    ctx.beginPath();
+    ctx.arc(-L * 0.36, 0, 4.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3a3f4a';
+    ctx.beginPath();
+    ctx.arc(-L * 0.36, 0, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Glasshouse, except on the box vans and the open buggy.
+  if (car.type !== 'van' && car.type !== 'armored' && car.type !== 'buggy') {
     ctx.beginPath();
     ctx.roundRect(-L * 0.2, -Wd / 2 + 2.6, L * 0.36, Wd - 5.2, 3.6);
     ctx.fillStyle = car.dead ? '#1c1c20' : '#a8d8ea';
@@ -579,6 +661,17 @@ function drawPed(ctx, S, ped) {
   ctx.beginPath();
   ctx.arc(-0.8, -0.6, 2.7, Math.PI * 0.7, Math.PI * 1.9);
   ctx.fill();
+  // A walker's straw sun hat: a wide pale brim over the hair.
+  if (ped.hat) {
+    ctx.fillStyle = '#e9c46a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 5.6, 4.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#d9a441';
+    ctx.beginPath();
+    ctx.arc(0, 0, 2.9, 0, Math.PI * 2);
+    ctx.fill();
+  }
   if (ped.role === 'ganger') {
     // The Serpents' blue bandana, and the gun when he is fighting.
     ctx.fillStyle = '#28418c';
@@ -611,7 +704,7 @@ function drawWalkLegs(ctx, ped) {
   const swing = Math.sin(ped.phase) * 4.4;
   const fx = Math.cos(ped.angle);
   const fy = Math.sin(ped.angle);
-  ctx.strokeStyle = '#26303a';
+  ctx.strokeStyle = ped.pants ?? '#26303a';
   ctx.lineWidth = 2.6;
   ctx.beginPath();
   ctx.moveTo(0, 0);

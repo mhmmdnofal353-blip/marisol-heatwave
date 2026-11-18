@@ -16,22 +16,34 @@ You are Juno Marchetti, back in town and broke. Fixer Vera Solano has work —
 a six-mission story of deliveries, a daylight car theft, a family rescue
 run under a locked three-star hunt, a shootout with the Glass Serpents, the
 Avenida Kings checkpoint race, and an armored-van finale — plus repeatable
-courier, fare, and chop-shop jobs once the story is done.
+courier, fare, and chop-shop jobs, the Shore Run street race against two
+Kings regulars down the shore road and back, and a standing hunt: twenty-
+four of Vera's lost parcels glow on open ground across all seven
+districts, each one banking cash and respect, every sixth paying a
+finder's bonus, and the full set paying a sweep bonus.
 
 The city lives around you: traffic that follows lanes, turns, brakes, and
-honks; pedestrians who stroll the sidewalks and run from trouble; nine
-drivable car types, any of them stealable, each with its own handling,
-damage model, and drift. Crime the city witnesses becomes heat. One to five
-wanted stars bring MBPD pursuit drivers who steer to intercept, officers on
-foot, a filling BUSTED meter, and roadblocks at four stars — lose their
-eyes, wait out the search, or buy a SunSpray respray and drive out clean in
-a different colour. Fight on foot with mouse-aimed pistol combat, follow
-the minimap blips and objective banner, earn cash and respect, and rest at
-Juno's loft to heal and save.
+honks; pedestrians who stroll the sidewalks and run from trouble, some in
+straw sun hats, some wandering down onto the sand past the towels and
+umbrellas; ten drivable car types, any of them stealable, each with its
+own handling, damage model, and drift — including the Dune Raider, a
+roll-caged buggy that holds its speed on the beach, where ordinary cars
+bog down and throw rooster tails of dust. The light drifts as you play:
+shadows lengthen toward dusk, the wash deepens, and the street lamps come
+on. Crime the city witnesses becomes heat. One to five wanted stars bring
+MBPD pursuit drivers who steer to intercept — further ahead of you the
+hotter the hunt runs — officers on foot, a filling BUSTED meter, and
+roadblocks that come thick and fast at five stars: lose their eyes, wait
+out the search, or buy a SunSpray respray and drive out clean in a
+different colour. Fight on foot with mouse-aimed pistol combat, follow
+the minimap blips (the mint pips are parcels still out there) and the
+objective banner, earn cash and respect, and rest at Juno's loft to heal
+and save.
 
 Controls: WASD or arrows to walk and drive, mouse to aim, click to shoot,
-F or E to enter cars and take work, Space for the handbrake, Shift to
-sprint, P or Esc to pause, M to mute.
+scroll to trim the camera zoom, F or E to enter cars and take work, Space
+for the handbrake, H to honk, Shift to sprint, P or Esc to pause, M to
+mute.
 
 ## Run it
 

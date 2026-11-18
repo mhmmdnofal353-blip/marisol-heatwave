@@ -86,7 +86,11 @@ export function nearestPoliceDist(S) {
 
 /** Send one more interceptor in from a road in the ring round the player. */
 function dispatchCar(S) {
-  const spot = roadPoint(S.rng, S.player.x, S.player.y, 640, 880);
+  // A hot hunt closes the ring: at four stars and up the fresh units
+  // arrive nearer, already rolling toward her.
+  const near = S.wanted.stars >= 4 ? 520 : 640;
+  const far = S.wanted.stars >= 4 ? 760 : 880;
+  const spot = roadPoint(S.rng, S.player.x, S.player.y, near, far);
   const car = createCar('police', spot.x, spot.y,
     Math.atan2(S.player.y - spot.y, S.player.x - spot.x), 'police', S.rng);
   S.cars.push(car);
@@ -168,9 +172,11 @@ function driveTheHunt(S, dt) {
     const hunting = W.seen || Math.hypot(car.x - W.lastSeen.x, car.y - W.lastSeen.y) > 60;
     if (hunting) {
       const anchor = W.seen ? P : W.lastSeen;
-      // Aim where Juno is going: lead the target by her velocity.
+      // Aim where Juno is going: lead the target by her velocity — and
+      // the hotter the hunt, the further ahead the drivers aim, so five
+      // stars cuts corners that two stars still chases around.
       const lead = P.inCar && P.car
-        ? Math.min(0.55, Math.hypot(car.x - P.x, car.y - P.y) / 700)
+        ? Math.min(0.55 + W.stars * 0.05, Math.hypot(car.x - P.x, car.y - P.y) / 700 + W.stars * 0.03)
         : 0;
       tx = anchor.x + (P.inCar && P.car ? Math.cos(P.car.angle) * P.car.speed * lead : 0);
       ty = anchor.y + (P.inCar && P.car ? Math.sin(P.car.angle) * P.car.speed * lead : 0);
@@ -221,7 +227,7 @@ function watchRoadblocks(S, dt) {
   }
   W.roadblockT -= dt;
   if (W.roadblockT > 0) return;
-  W.roadblockT = 16;
+  W.roadblockT = W.stars >= 5 ? 9 : 16; // at five stars the blocks come thick and fast
   const aheadX = P.x + Math.cos(P.car.angle) * 400;
   const aheadY = P.y + Math.sin(P.car.angle) * 400;
   for (const side of [-24, 24]) {

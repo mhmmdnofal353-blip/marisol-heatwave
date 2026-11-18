@@ -1,13 +1,14 @@
 // main.js — the conductor of Marisol Heatwave. It owns the game state and
 // the main loop, drains the event queue every module speaks through
-// (crimes to the law, sounds to the speakers, sparks to the air), works
-// out what the world is offering Juno at any moment — a conversation, a
-// respray, a bed, a hospital — runs the menus' actions, moves the camera,
-// and stages the deterministic ?shot= scenes the screenshots come from.
+// (crimes to the law, sounds to the speakers, sparks to the air, parcel
+// finds to the purse), works out what the world is offering Juno at any
+// moment — a conversation, a respray, a bed, a hospital, a street race —
+// runs the menus' actions, moves the camera, and stages the
+// deterministic ?shot= scenes the screenshots come from.
 
-import { WORLD } from './config.js';
+import { WORLD, STASH } from './config.js';
 import { mulberry32 } from './random.js';
-import { bindInput, input, tapped, endFrame } from './input.js';
+import { bindInput, input, tapped, endFrame, consumeWheel } from './input.js';
 import { buildCity } from './city.js';
 import { createPlayer, updatePlayer, nearestCar, hurtPlayer } from './player.js';
 import {
@@ -79,6 +80,7 @@ function createState(saved) {
     nearGiver: null,
     bustedFine: 0,
     camera: { x: home.x, y: home.y, zoom: 1 },
+    zoomBias: 1, // the player's own wheel-set trim on the camera zoom
     viewW: canvas.width,
     viewH: canvas.height,
     mouseWorld: { x: 0, y: 0 },
@@ -101,6 +103,11 @@ function createState(saved) {
     state.player.respect = saved.respect;
     state.storyIdx = Math.min(6, saved.storyIdx ?? 0);
     state.sideDone = saved.sideDone ?? 0;
+    // Parcels banked in an earlier visit stay banked.
+    for (const id of saved.stashIds ?? []) {
+      const stash = state.city.stashes.find((s) => s.id === id);
+      if (stash) stash.taken = true;
+    }
     if (typeof saved.x === 'number' && typeof saved.y === 'number') {
       state.player.x = Math.max(30, Math.min(WORLD.width - 30, saved.x));
       state.player.y = Math.max(30, Math.min(WORLD.height - 30, saved.y));
@@ -137,6 +144,7 @@ function advanceDialogue() {
 
 function giverPlace(giver) {
   if (giver.place === 'garage0') return S.city.places.garages[0];
+  if (giver.place === 'garage1') return S.city.places.garages[1];
   return S.city.places[giver.place];
 }
 
@@ -409,6 +417,31 @@ function processEvents() {
       case 'pickupSound':
         audio.sfxPickup();
         break;
+      case 'stash': {
+        // A hidden parcel banked: the finder fee, the set bonuses, and
+        // Vera's regards. The full set earns the banner and the sweep.
+        const total = S.city.stashes.length;
+        const found = S.city.stashes.filter((s) => s.taken).length;
+        P.cash += STASH.cash;
+        P.respect += STASH.respect;
+        audio.sfxStash();
+        burst(S, e.stash.x, e.stash.y, 'spray', 7);
+        if (found >= total) {
+          P.cash += STASH.allBonus;
+          showBanner('EVERY PARCEL FOUND', `Marisol Bay swept clean · +$${STASH.allBonus}`);
+        } else if (found % 6 === 0) {
+          P.cash += STASH.setBonus;
+          pushToast(`Parcels ${found}/${total} — finder's bonus +$${STASH.setBonus}`);
+        } else {
+          pushToast(`Hidden parcel banked · ${found}/${total} · +$${STASH.cash}`);
+        }
+        storeSave(snapshotOf(S));
+        S.hasSave = true;
+        break;
+      }
+      case 'dust':
+        burst(S, e.x, e.y, 'spray', 2);
+        break;
       case 'missionPass': {
         audio.sfxMissionPass();
         showBanner('MISSION PASSED', `${e.def.title} · +$${e.def.reward.cash}`);
@@ -519,7 +552,7 @@ function updateCamera(dt, mode) {
   const follow = Math.min(1, dt * 5.2);
   cam.x += (tx - cam.x) * follow;
   cam.y += (ty - cam.y) * follow;
-  const targetZoom = P.inCar ? 0.86 : 1.0;
+  const targetZoom = (P.inCar ? 0.86 : 1.0) * S.zoomBias;
   cam.zoom += (targetZoom - cam.zoom) * Math.min(1, dt * 1.8);
   const hw = S.viewW / 2 / cam.zoom;
   const hh = S.viewH / 2 / cam.zoom;
@@ -635,6 +668,11 @@ if (SHOT) {
     if (tapped('KeyM')) S.muted = audio.toggleMute();
 
     if (S.screen === 'play') {
+      // The wheel trims the camera: in for detail, out for the chase.
+      const notches = consumeWheel();
+      if (notches !== 0) {
+        S.zoomBias = Math.max(0.75, Math.min(1.2, S.zoomBias * (notches < 0 ? 1.09 : 0.92)));
+      }
       if (tapped('Escape', 'KeyP')) {
         S.screen = 'pause';
       } else if (S.dialogue) {

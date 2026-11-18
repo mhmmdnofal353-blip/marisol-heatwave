@@ -169,11 +169,29 @@ function firePistol(S) {
   }
 }
 
+/**
+ * Bank any hidden parcel she is standing on — or has just driven over.
+ * The parcel is marked taken here; the event carries the news to the
+ * main loop, which pays out and counts the set.
+ */
+function collectStashes(S) {
+  const P = S.player;
+  const reach = P.inCar ? 42 : 30;
+  for (const stash of S.city.stashes) {
+    if (stash.taken) continue;
+    if (Math.hypot(stash.x - P.x, stash.y - P.y) < reach) {
+      stash.taken = true;
+      S.events.push({ kind: 'stash', stash });
+    }
+  }
+}
+
 /** One frame of Juno: drive if she is driving, otherwise walk and fight. */
 export function updatePlayer(S, dt) {
   const P = S.player;
   P.shootT -= dt;
   P.hurtT += dt;
+  collectStashes(S);
   // Badly hurt and left alone, she claws back up to a fighting minimum.
   if (P.hp > 0 && P.hp < 40 && P.hurtT > 8) P.hp = Math.min(40, P.hp + 3.2 * dt);
 
@@ -196,6 +214,8 @@ export function updatePlayer(S, dt) {
     P.x = car.x;
     P.y = car.y;
     P.angle = car.angle;
+    // A horn of her own: H leans on it, and the street hears her coming.
+    if (tapped('KeyH')) S.events.push({ kind: 'horn', x: car.x, y: car.y });
     if (tapped('KeyF', 'KeyE') && Math.abs(car.speed) < 110) exitCar(S);
     return;
   }

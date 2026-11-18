@@ -128,6 +128,14 @@ export function sfxPickup() {
   tone(990, 0.1, 'triangle', 0.2, null, 0.06);
 }
 
+/** A hidden parcel banked: three bright notes climbing, with a sparkle. */
+export function sfxStash() {
+  tone(784, 0.08, 'triangle', 0.2);
+  tone(988, 0.08, 'triangle', 0.2, null, 0.07);
+  tone(1318, 0.16, 'sine', 0.24, null, 0.14);
+  noise(0.12, 0.05, 5200, 1.4, 0.1);
+}
+
 /** Mission passed: a four-note major arpeggio. */
 export function sfxMissionPass() {
   const notes = [523, 659, 784, 1046];

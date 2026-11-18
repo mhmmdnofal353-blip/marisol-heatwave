@@ -57,6 +57,16 @@ export function tapped(...codes) {
   return codes.some((code) => input.pressed.has(code));
 }
 
+/**
+ * Read and clear the wheel's accumulated notches. The camera zoom is the
+ * one reader: a notch in eases the view out, a notch out pulls it in.
+ */
+export function consumeWheel() {
+  const notches = input.wheel;
+  input.wheel = 0;
+  return notches;
+}
+
 /** Clear the per-frame edges once the frame has read them. */
 export function endFrame() {
   input.pressed.clear();

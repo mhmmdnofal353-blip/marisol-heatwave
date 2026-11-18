@@ -5,7 +5,7 @@
 // meet badly here too: a fast car through a crowd is both a crime and a
 // tragedy, and the event queue carries the news.
 
-import { ROADS, PED_SHIRTS, PED_SKIN } from './config.js';
+import { ROADS, PED_SHIRTS, PED_SKIN, BEACH_X, WATER_X, WORLD } from './config.js';
 import { pick, range, chance } from './random.js';
 import { collideCircle } from './city.js';
 
@@ -13,6 +13,7 @@ const WALKER_TARGET = 26;
 let nextPedId = 1;
 
 const HAIR_COLOURS = ['#22223b', '#6f1d1b', '#99582a', '#e0aaff', '#f2f2f2'];
+const PANTS_COLOURS = ['#26303a', '#5b4a3f', '#31556b', '#6b3155', '#3a3f4a', '#7a6a53'];
 
 /** Create a pedestrian. `role` is 'walker' unless a mission or the law says otherwise. */
 export function createPed(x, y, rng, role = 'walker') {
@@ -25,6 +26,8 @@ export function createPed(x, y, rng, role = 'walker') {
     shirt: role === 'ganger' ? '#28418c' : role === 'officer' ? '#1d3557' : pick(rng, PED_SHIRTS),
     skin: pick(rng, PED_SKIN),
     hair: pick(rng, HAIR_COLOURS),
+    pants: pick(rng, PANTS_COLOURS),
+    hat: role === 'walker' && chance(rng, 0.3), // a straw sun hat against the glare
     role,
     state: 'walk', // walk | flee | fight | chase | wait | ride
     tx: x,
@@ -42,6 +45,11 @@ export function createPed(x, y, rng, role = 'walker') {
 
 /** A stroll target: a sidewalk point a few hundred pixels from (x, y). */
 function sidewalkTarget(rng, x, y) {
+  // Down by the shore, some strolls leave the pavement for the sand.
+  if (x > 3700 && chance(rng, 0.3)) {
+    const ty = Math.max(50, Math.min(WORLD.height - 50, y + range(rng, -520, 520)));
+    return { x: range(rng, BEACH_X + 50, WATER_X - 90), y: ty };
+  }
   if (chance(rng, 0.5)) {
     const avenue = pick(rng, ROADS.avenues);
     return { x: avenue + (chance(rng, 0.5) ? -ROADS.walk : ROADS.walk), y: y + range(rng, -420, 420) };

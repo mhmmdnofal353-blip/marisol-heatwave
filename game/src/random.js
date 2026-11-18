@@ -35,3 +35,19 @@ export function pick(rng, list) {
 export function chance(rng, p) {
   return rng() < p;
 }
+
+/**
+ * A shuffled copy of a list, Fisher–Yates from the back — the same walk
+ * shuffledNames in city.js always made, now shared: the name bags, the
+ * hidden-parcel spots and anything else that wants a fair deal.
+ */
+export function shuffle(rng, list) {
+  const out = [...list];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = out[i];
+    out[i] = out[j];
+    out[j] = tmp;
+  }
+  return out;
+}

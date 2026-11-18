@@ -1,2 +1,6 @@
 # Build output from main.ts (the grader makes its own)
 out/
+
+# Local litter: editor and capture by-products are not part of the game
+.DS_Store
+*.log

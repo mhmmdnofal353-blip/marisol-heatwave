@@ -4,10 +4,11 @@
 // What lives here: this file and nothing else at the root does the handing
 // in. The game itself is the game/ folder — static files a desktop browser
 // opens offline: an original open-world crime game (a seeded city, traffic
-// and pedestrians, cars to steal, a wanted system with real pursuit, a
-// six-mission story plus side work, mouse-aimed combat, a minimap HUD,
-// menus, and a localStorage save), drawn on a 2D canvas with every sound
-// synthesised in WebAudio.
+// and pedestrians, ten car types to steal, a wanted system with real
+// pursuit, a six-mission story plus side work and street races, hidden
+// parcels to hunt across the districts, mouse-aimed combat, a minimap
+// HUD, menus, and a localStorage save), drawn on a 2D canvas under a
+// drifting golden-hour light with every sound synthesised in WebAudio.
 //
 // Running this copies game/ and screenshots/ into the output directory and
 // writes dossier.json there, built by the kit's own library
@@ -47,3 +48,4 @@ const dossier = buildDossier(outDir, {
   game_path_max_bytes: 1000,
 });
 writeFileSync(join(outDir, 'dossier.json'), dossier);
+console.log(`Marisol Heatwave dossier written to ${outDir} (${dossier.length} bytes).`);

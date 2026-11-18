@@ -78,6 +78,13 @@ try {
     return list.find((t) => t.type === 'page');
   }, 20000, 'a Chrome page target');
 
+  // The server needs a breath before the first navigation, or the page
+  // lands on a dead port and no scene ever stages.
+  await until(async () => {
+    const res = await fetch(`http://127.0.0.1:${HTTP_PORT}/`);
+    return res.ok;
+  }, 10000, 'the game server to listen');
+
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener('open', resolve, { once: true });
@@ -105,7 +112,13 @@ try {
     });
     const file = join(here, 'screenshots', scene.name);
     writeFileSync(file, Buffer.from(shot.data, 'base64'));
-    console.log(`${scene.name}: ${statSync(file).size} bytes`);
+    const bytes = statSync(file).size;
+    console.log(`${scene.name}: ${bytes} bytes`);
+    // The dossier gate caps a screenshot at 256 KiB; fail here, loudly,
+    // rather than at submission time with a rejected bundle.
+    if (bytes > 262144) {
+      throw new Error(`${scene.name} is ${bytes} bytes, over the 256 KiB cap`);
+    }
   }
   socket.close();
 } finally {

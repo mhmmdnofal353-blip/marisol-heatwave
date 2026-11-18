@@ -1,4 +1,4 @@
-// shots.js — the staged scenes behind ?shot=title|chase|foot|drive, used
+// shots.js — the staged scenes behind ?shot=title|chase|foot|beach, used
 // for the entry's screenshots. Each scene poses the real game — real cars,
 // real police, the real HUD state — at a seeded moment, and the main loop
 // then runs the world forward a few fixed steps with an autopilot at the
@@ -89,12 +89,13 @@ export function stageShot(S, name) {
       S.screen = 'play';
       return 0.9;
     }
-    case 'drive': {
-      // A courier run along the shore road, the beach checkpoint ahead.
+    case 'beach': {
+      // The Dune Raider on the shore road, hunting the parcels: seven
+      // already banked, and the next one glowing on the sand ahead.
       P.inCar = true;
-      const car = createCar('coupe', 3980, 1402, 0, 'player', S.rng);
-      car.speed = 235;
-      car.color = '#e07a5f';
+      const car = createCar('buggy', 3980, 1402, 0, 'player', S.rng);
+      car.speed = 215;
+      car.color = '#ffb703';
       S.cars.push(car);
       P.car = car;
       P.x = car.x;
@@ -105,10 +106,16 @@ export function stageShot(S, name) {
       van.sign = -1;
       van.speed = 120;
       S.cars.push(van);
+      S.city.stashes.forEach((stash, i) => { if (i < 7) stash.taken = true; });
+      const next = S.city.stashes.find((stash) => !stash.taken);
+      if (next) {
+        next.x = 4490;
+        next.y = 1330;
+      }
       S.objective = {
-        title: 'Courier Run',
-        text: 'Deliver the package to Bahia Beach',
-        x: 4470, y: 1380, timer: 74,
+        title: 'Hidden Parcels',
+        text: 'Bank the glowing parcels hidden all over Marisol Bay',
+        x: 4490, y: 1330, timer: null,
       };
       S.checkpoints = null;
       S.screen = 'play';

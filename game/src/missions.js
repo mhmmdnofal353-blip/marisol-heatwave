@@ -234,7 +234,7 @@ export function storyMissions(S) {
   ];
 }
 
-/** One repeatable side job: 'delivery', 'fare', or 'theft' (the chop list). */
+/** One repeatable side job: 'delivery', 'fare', 'theft' (the chop list) or 'race'. */
 export function sideJob(S, kind) {
   const rng = S.rng;
   const places = S.city.places;
@@ -281,6 +281,40 @@ export function sideJob(S, kind) {
       outro: [],
     };
   }
+  if (kind === 'race') {
+    // The Shore Run: eight gates east along the shore road and back,
+    // against two Kings regulars who never learned to lose gracefully.
+    return {
+      id: 'side-race', title: 'Shore Run', side: true,
+      reward: { cash: 420, respect: 8 },
+      intro: [{ who: 'Dispatcher', text: 'Two Kings regulars want a rematch down the shore. Eight gates, winner takes the purse. The law is not invited.' }],
+      stages: [
+        {
+          kind: 'race', text: 'Win the Shore Run', x: 1440, y: 1920, r: 0,
+          setup(S2, M) {
+            const route = [
+              [1440, 1920], [2000, 2460], [2560, 3000], [3120, 3000],
+              [3680, 3540], [4240, 3540], [4240, 2460], [3680, 1920],
+            ];
+            M.data.checkpoints = route.map(([x, y]) => ({ x, y }));
+            M.data.cp = 0;
+            M.data.rivals = [];
+            const rivalTypes = ['sports', 'coupe'];
+            for (let i = 0; i < rivalTypes.length; i++) {
+              const car = createCar(rivalTypes[i], 1392 - i * 6, 1964 + i * 44, 0, 'racer', S2.rng);
+              car.cp = 0;
+              car.skill = 0.85 - i * 0.04;
+              S2.cars.push(car);
+              M.data.rivals.push(car);
+              M.ownCar(car);
+            }
+            S2.events.push({ kind: 'toast', text: 'The Shore Run starts at the first gate — east, toward the sea!' });
+          },
+        },
+      ],
+      outro: [],
+    };
+  }
   // The chop list: one marked parked car, delivered to the docks.
   const spot = S.city.parkedSpots.length
     ? pick(rng, S.city.parkedSpots)
@@ -311,6 +345,7 @@ export const JOB_GIVERS = [
   { place: 'garage0', kind: 'delivery', label: 'Courier work — SunSpray downtown' },
   { place: 'cafe', kind: 'fare', label: 'Fares — Café Palma' },
   { place: 'chopshop', kind: 'theft', label: 'Chop list — Docks' },
+  { place: 'garage1', kind: 'race', label: 'Street races — SunSpray, second yard' },
 ];
 
 /** Begin a mission: build its runtime state and stage its first scene. */
@@ -537,7 +572,7 @@ function updateRace(S, M, dt) {
     const place = 1 + M.data.rivals.filter((c) => c.cp >= cps.length).length;
     if (place === 1) {
       S.player.cash += 250;
-      S.events.push({ kind: 'toast', text: 'You win Avenida Kings! +$250 bonus' });
+      S.events.push({ kind: 'toast', text: `You win the ${M.def.title}! +$250 bonus` });
     } else {
       const suffix = place === 2 ? 'nd' : 'rd';
       S.events.push({ kind: 'toast', text: `You placed ${place}${suffix} — Vera pays the job, not the crown` });
